@@ -29,13 +29,15 @@ public interface SearchContext<T> {
     String getPaginationMessage(SearchResults<T> searchResults, int numberOfPages, 
             boolean forward, boolean firstElementZero);
     
+    Class<T> getResultType();
+    
     ResultModel<T> getResultModel();
-
-    SearchResults<T> getSearchResults(String sql, Class<T> resultType);
     
-    SelectDao<T> getSelectDao(Class<T> resultType);
-    
-    SearchResults<T> getSearchResults(Class<T> resultType);
+    SearchResults<T> getSearchResults();
 
+    SearchResults<T> getSearchResults(String sql);
+    
+    SelectDao<T> getSelectDao();
+    
     SearchResults<T> getSearchResults(SelectDao<T> dao);
 }

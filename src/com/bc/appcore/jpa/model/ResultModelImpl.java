@@ -100,9 +100,13 @@ public class ResultModelImpl<T> implements ResultModel<T> {
         }
         
         final Map<Class, Set<String>> entityColNames = new HashMap();
+        
         final Map<Class, EntityUpdater> updaters = new HashMap();
+        
         final Map<Class, Method[]> entityMethodMappings = new HashMap();
+        
         final String [] puNames = metaData.getPersistenceUnitNames();
+        
         for(String puName : puNames) {
             
             if(!persistenceUnitTest.test(puName)) {

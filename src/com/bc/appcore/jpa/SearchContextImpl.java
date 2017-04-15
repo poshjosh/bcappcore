@@ -18,7 +18,6 @@ package com.bc.appcore.jpa;
 
 import com.bc.jpa.dao.SelectDao;
 import com.bc.jpa.search.BaseSearchResults;
-import com.bc.jpa.search.QuerySearchResults;
 import com.bc.jpa.search.SearchResults;
 import com.bc.util.BatchUtils;
 import java.util.logging.Level;
@@ -28,12 +27,29 @@ import javax.persistence.Query;
 import com.bc.appcore.AppCore;
 import com.bc.appcore.jpa.model.ResultModel;
 import com.bc.jpa.dao.BuilderForSelectImpl;
+import com.bc.jpa.search.QuerySearchResults;
+import java.util.Objects;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Feb 20, 2017 8:05:21 PM
  */
 public class SearchContextImpl<T> implements SearchContext<T>  {
     
+    private static class AutoCloseableQuerySearchResults 
+            extends QuerySearchResults implements AutoCloseable {
+        private final EntityManager em;
+        public AutoCloseableQuerySearchResults(EntityManager em, Query query, int batchSize, boolean useCache) {
+            super(query, batchSize, useCache);
+            this.em = Objects.requireNonNull(em);
+        }
+        @Override
+        public void close() {
+            if(em.isOpen()) {
+                em.close();
+            }
+        }
+    }
+
     private final AppCore app;
     
     private final ResultModel<T> resultModel;
@@ -43,10 +59,15 @@ public class SearchContextImpl<T> implements SearchContext<T>  {
     private final boolean useCache;
 
     public SearchContextImpl(AppCore app, ResultModel<T> resultModel, int pageSize, boolean useCache) {
-        this.app = app;
-        this.resultModel = resultModel;
+        this.app = Objects.requireNonNull(app);
+        this.resultModel = Objects.requireNonNull(resultModel);
         this.pageSize = pageSize;
         this.useCache = useCache;
+    }
+
+    @Override
+    public Class<T> getResultType() {
+        return this.resultModel.getType();
     }
 
     @Override
@@ -73,38 +94,28 @@ public class SearchContextImpl<T> implements SearchContext<T>  {
     }
 
     @Override
-    public SearchResults<T> getSearchResults(String sql, Class<T> resultType) {
+    public SearchResults<T> getSearchResults() {
+        return this.getSearchResults(this.getSelectDao());
+    }
+    
+    @Override
+    public SearchResults<T> getSearchResults(String sql) {
         final EntityManager em = app.getEntityManager();
+        final Class<T> resultType = this.getResultType();
         final Query query = resultType == null ? em.createNativeQuery(sql) : em.createNativeQuery(sql, resultType); 
         final SearchResults searchResults = new AutoCloseableQuerySearchResults(
                 em, query, this.pageSize, this.useCache);
         return searchResults;
     }
-    
-    private static class AutoCloseableQuerySearchResults 
-            extends QuerySearchResults implements AutoCloseable {
-        private final EntityManager em;
-        public AutoCloseableQuerySearchResults(EntityManager em, Query query, int batchSize, boolean useCache) {
-            super(query, batchSize, useCache);
-            this.em = em;
-        }
-        @Override
-        public void close() {
-            if(em.isOpen()) {
-                em.close();
-            }
-        }
-    }
 
     @Override
-    public SelectDao<T> getSelectDao(Class<T> resultType) {
+    public SelectDao<T> getSelectDao() {
+        return this.getSelectDao(this.getResultType());
+    }
+
+    public SelectDao<T> getSelectDao(Class resultType) {
         return resultType == null ? new BuilderForSelectImpl(app.getEntityManager()) :
                 new BuilderForSelectImpl(app.getEntityManager(), resultType);
-    }
-    
-    @Override
-    public SearchResults<T> getSearchResults(Class<T> resultType) {
-        return this.getSearchResults(this.getSelectDao(resultType));
     }
     
     @Override

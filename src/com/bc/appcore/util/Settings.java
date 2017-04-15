@@ -16,6 +16,7 @@
 
 package com.bc.appcore.util;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -23,7 +24,27 @@ import java.util.Map;
  * @author Chinomso Bassey Ikwuagwu on Apr 8, 2017 2:58:58 AM
  */
 public interface Settings extends Map<String, Object> {
+    
     Map<String, Object> getByLabels();
+    
+    /**
+     * As against {@link #putAll(java.util.Map)} this method persists the
+     * added data across sessions and application re-launches.
+     * @param m 
+     * @throws java.io.IOException 
+     */
+    void updateAll(Map<? extends String, ? extends Object> m) throws IOException;
+
+    /**
+     * As against {@link #put(java.lang.Object, java.lang.Object)} this method
+     * persists the added data across sessions and application re-launches.
+     * @param name
+     * @param newValue
+     * @return 
+     * @throws java.io.IOException 
+     */
+    Object update(String name, Object newValue) throws IOException;
+    
     Class getValueType(String name, Class outputIfNone);
     String getLabel(String name, String outputIfNone);
     String getName(String label, String outputIfNone);

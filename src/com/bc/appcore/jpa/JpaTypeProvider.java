@@ -18,6 +18,7 @@ package com.bc.appcore.jpa;
 
 import com.bc.appcore.AppCore;
 import com.bc.appcore.TypeProvider;
+import com.bc.appcore.jpa.predicates.MasterPersistenceUnitTest;
 import com.bc.jpa.EntityUpdater;
 import com.bc.jpa.JpaMetaData;
 import java.util.ArrayList;
@@ -30,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -59,13 +61,16 @@ public class JpaTypeProvider implements TypeProvider {
     
     private final Map<Class, EntityUpdater> entityUpdaters;
     
-    public JpaTypeProvider(AppCore app) {
+    public JpaTypeProvider(AppCore app, Predicate<String> testPersistenceUnitName) {
         this.app = Objects.requireNonNull(app);
         this.typeColumnNames = new HashMap();
         this.entityUpdaters = new HashMap();
         final JpaMetaData metaData = app.getJpaContext().getMetaData();
         final String [] puNames = metaData.getPersistenceUnitNames();
         for(String puName : puNames) {
+            if(!testPersistenceUnitName.test(puName)) {
+                continue;
+            }
             Class [] puTypes = metaData.getEntityClasses(puName);
             for(Class puType : puTypes) {
                 this.typeColumnNames.put(puType, new HashSet(Arrays.asList(metaData.getColumnNames(puType))));

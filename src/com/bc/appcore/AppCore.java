@@ -36,6 +36,7 @@ import com.bc.appcore.jpa.SearchContext;
 import com.bc.appcore.jpa.model.ResultModel;
 import com.bc.appcore.util.Expirable;
 import com.bc.appcore.util.Settings;
+import java.util.Properties;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Feb 7, 2017 11:10:58 PM
@@ -80,6 +81,8 @@ public interface AppCore extends ObjectFactory {
     <S> ParametersBuilder<S> getParametersBuilder(S source, String actionCommand);
     
     Config getConfig();
+    
+    Properties getSettingsConfig();
     
     Settings getSettings();
     

@@ -31,11 +31,15 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Apr 8, 2017 3:02:15 AM
  */
 public class SettingsImpl extends HashMap<String, Object> implements Settings {
+
+    private static final Logger logger = Logger.getLogger(SettingsImpl.class.getName());
     
     private final ConfigService svc;
 
@@ -72,17 +76,66 @@ public class SettingsImpl extends HashMap<String, Object> implements Settings {
         return this.byLabels;
     }
 
+    /**
+     * As against {@link #putAll(java.util.Map)} this method persists the
+     * added data across sessions and application re-launches.
+     * @param m 
+     * @throws java.io.IOException 
+     */
     @Override
-    public Object put(String name, Object newValue) {
-        final Object oldValue = this.getOrDefault(name, null);
-        this.set(name, newValue);
-        try{
-            this.svc.store();
-        }catch(IOException e) {
-            this.set(name, oldValue);
-            throw new RuntimeException(e);
+    public void updateAll(Map<? extends String, ? extends Object> m) throws IOException {
+        
+        final boolean store = false;
+        
+        for(Entry<? extends String, ? extends Object> entry : m.entrySet()) {
+            this.update(entry.getKey(), entry.getValue(), false, store);
         }
-        super.put(name, newValue);
+        
+        this.svc.store();
+    }
+
+    /**
+     * As against {@link #put(java.lang.Object, java.lang.Object)} this method
+     * persists the added data across sessions and application re-launches.
+     * @param name
+     * @param newValue
+     * @return 
+     * @throws java.io.IOException 
+     */
+    @Override
+    public Object update(String name, Object newValue) throws IOException {
+        return this.update(name, newValue, false, true);
+    }
+
+    public Object update(String name, Object newValue, boolean onlyIfAbsent, boolean store) 
+            throws IOException {
+        
+        if(logger.isLoggable(Level.FINE)) {
+            logger.log(Level.FINE, "Putting: {0}={1}", new Object[]{name, newValue});
+        }
+        
+        final Object oldValue = this.getOrDefault(name, null);
+        
+        if(!onlyIfAbsent || oldValue == null) {
+            
+            this.set(name, newValue);
+
+            try{
+
+                this.svc.store();
+
+                logger.fine("Save successful");
+
+            }catch(IOException | RuntimeException e) {
+
+                this.set(name, oldValue);
+
+                throw e;
+            }
+
+            super.put(name, newValue);
+        }
+        
         return oldValue;
     }
     
@@ -177,19 +230,19 @@ public class SettingsImpl extends HashMap<String, Object> implements Settings {
         Object value = newValue;
         final Class type = this.getValueType(name, null);
         if(type == String.class) {
-            value = data.setString(name, (String)newValue);
+            value = data.setString(name, newValue==null?null:newValue.toString());
         }else if(type == Double.class) {
-            value = data.setDouble(name, (Double)newValue);
+            value = data.setDouble(name, newValue==null?null:newValue instanceof Double?(Double)newValue:Double.parseDouble(newValue.toString()));
         }else if(type == Long.class) {
-            value = data.setLong(name, (Long)newValue);
+            value = data.setLong(name, newValue==null?null:newValue instanceof Long?(Long)newValue:Long.parseLong(newValue.toString()));
         }else if(type == Integer.class) {
-            value = data.setInt(name, (Integer)newValue);
+            value = data.setInt(name, newValue==null?null:newValue instanceof Integer?(Integer)newValue:Integer.parseInt(newValue.toString()));
         }else if(type == Float.class) {
-            value = data.setFloat(name, (Float)newValue);
+            value = data.setFloat(name, newValue==null?null:newValue instanceof Float?(Float)newValue:Float.parseFloat(newValue.toString()));
         }else if(type == Short.class) {
-            value = data.setShort(name, (Short)newValue);
+            value = data.setShort(name, newValue==null?null:newValue instanceof Short?(Short)newValue:Short.parseShort(newValue.toString()));
         }else if(type == Boolean.class) {
-            value = data.setBoolean(name, (Boolean)newValue);
+            value = data.setBoolean(name, newValue==null?null:newValue instanceof Boolean?(Boolean)newValue:Boolean.parseBoolean(newValue.toString()));
         }else if(type == Date.class) {
             try{
                 final Calendar cal = Calendar.getInstance();

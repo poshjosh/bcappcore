@@ -50,6 +50,7 @@ import com.bc.appcore.parameter.ParameterException;
 import com.bc.appcore.util.Expirable;
 import com.bc.appcore.util.Settings;
 import java.util.Iterator;
+import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -70,7 +71,7 @@ public abstract class AbstractAppCore implements AppCore {
     
     private final Config config;
     
-    private final Settings settings;
+    private final Properties settingsConfig;
     
     private final Map<String, Object> attributes;
     
@@ -92,7 +93,7 @@ public abstract class AbstractAppCore implements AppCore {
     
     public AbstractAppCore(
             Path workingDir, ConfigService configService, 
-            Config config, Settings settings, JpaContext jpaContext,
+            Config config, Properties settingsConfig, JpaContext jpaContext,
             ExecutorService dataOutputService, SlaveUpdates slaveUpdates, JpaSync jpaSync) {
         
         this.workingDir = Objects.requireNonNull(workingDir);
@@ -102,7 +103,7 @@ public abstract class AbstractAppCore implements AppCore {
         this.jpaContext = Objects.requireNonNull(jpaContext);
         this.configService = Objects.requireNonNull(configService);
         this.config = Objects.requireNonNull(config);
-        this.settings = Objects.requireNonNull(settings);
+        this.settingsConfig = Objects.requireNonNull(settingsConfig);
         this.updateOutputService = Objects.requireNonNull(dataOutputService);
         this.slaveUpdates = Objects.requireNonNull(slaveUpdates);
         this.jpaSync = Objects.requireNonNull(jpaSync);
@@ -304,8 +305,13 @@ public abstract class AbstractAppCore implements AppCore {
     }
 
     @Override
+    public Properties getSettingsConfig() {
+        return this.settingsConfig;
+    }
+
+    @Override
     public Settings getSettings() {
-        return this.settings;
+        return this.get(Settings.class);
     }
     
     @Override
