@@ -14,16 +14,13 @@
  * limitations under the License.
  */
 
-package com.bc.appcore.jpa;
-
-import com.bc.appcore.util.Selection;
+package com.bc.appcore.util;
 
 /**
- * @author Chinomso Bassey Ikwuagwu on Mar 29, 2017 8:22:09 PM
+ * Two instances of this class are equal if and only if their values are equal.
+ * @author Chinomso Bassey Ikwuagwu on Mar 28, 2017 4:46:17 PM
  */
-public interface SelectionContext {
+public interface Selection {
     
-    Selection[] getSelectionValues(Class entityType);
-    
-    String getSelectionColumn(Class entityType, String outputIfNone);
+    Object getValue();
 }

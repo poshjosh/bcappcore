@@ -16,11 +16,23 @@
 
 package com.bc.appcore.jpa;
 
+import com.bc.appcore.AppCore;
+import com.bc.jpa.util.MapBuilderForEntity;
+import com.bc.util.MapBuilder;
+
 /**
- * Two instances of this class are equal if and only if their values are equal.
- * @author Chinomso Bassey Ikwuagwu on Mar 28, 2017 4:46:17 PM
+ * @author Chinomso Bassey Ikwuagwu on Apr 15, 2017 9:22:31 PM
  */
-public interface Selection {
-    
-    Object getValue();
+public class EntityMapBuilder extends MapBuilderForEntity {
+
+    private final AppCore app;
+
+    public EntityMapBuilder(AppCore app) {
+        this.app = app;
+        this.recursionFilter(app.get(MapBuilder.RecursionFilter.class));
+    }
+
+    public AppCore getApp() {
+        return app;
+    }
 }

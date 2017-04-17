@@ -100,8 +100,8 @@ public class SearchContextImpl<T> implements SearchContext<T>  {
     
     @Override
     public SearchResults<T> getSearchResults(String sql) {
-        final EntityManager em = app.getEntityManager();
         final Class<T> resultType = this.getResultType();
+        final EntityManager em = app.getEntityManager(resultType);
         final Query query = resultType == null ? em.createNativeQuery(sql) : em.createNativeQuery(sql, resultType); 
         final SearchResults searchResults = new AutoCloseableQuerySearchResults(
                 em, query, this.pageSize, this.useCache);
@@ -110,12 +110,9 @@ public class SearchContextImpl<T> implements SearchContext<T>  {
 
     @Override
     public SelectDao<T> getSelectDao() {
-        return this.getSelectDao(this.getResultType());
-    }
-
-    public SelectDao<T> getSelectDao(Class resultType) {
-        return resultType == null ? new BuilderForSelectImpl(app.getEntityManager()) :
-                new BuilderForSelectImpl(app.getEntityManager(), resultType);
+        final Class resultType = this.getResultType();
+        Objects.requireNonNull(resultType);
+        return new BuilderForSelectImpl(app.getEntityManager(resultType), resultType);
     }
     
     @Override

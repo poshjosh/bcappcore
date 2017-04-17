@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-package com.bc.appcore.jpa;
+package com.bc.appcore.util;
 
+import com.bc.appcore.util.Selection;
 import java.util.Objects;
 
 /**

@@ -16,6 +16,8 @@
 
 package com.bc.appcore.jpa;
 
+import com.bc.appcore.util.SelectionImpl;
+import com.bc.appcore.util.Selection;
 import com.bc.appcore.AppCore;
 import com.bc.jpa.EntityUpdater;
 import com.bc.jpa.dao.BuilderForSelect;

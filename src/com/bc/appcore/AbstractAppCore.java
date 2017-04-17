@@ -285,8 +285,8 @@ public abstract class AbstractAppCore implements AppCore {
     }
 
     @Override
-    public Dao getDao() {
-        return new DaoImpl(this.getEntityManager());
+    public Dao getDao(Class entityType) {
+        return new DaoImpl(this.getEntityManager(entityType));
     }
 
     @Override

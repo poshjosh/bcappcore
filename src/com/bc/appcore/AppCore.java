@@ -86,9 +86,9 @@ public interface AppCore extends ObjectFactory {
     
     Settings getSettings();
     
-    EntityManager getEntityManager();
+    EntityManager getEntityManager(Class entityType);
     
-    Dao getDao();
+    Dao getDao(Class entityType);
     
     JpaContext getJpaContext();
     

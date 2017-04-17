@@ -18,7 +18,6 @@ package com.bc.appcore.jpa;
 
 import com.bc.appcore.AppCore;
 import com.bc.appcore.TypeProvider;
-import com.bc.appcore.jpa.predicates.MasterPersistenceUnitTest;
 import com.bc.jpa.EntityUpdater;
 import com.bc.jpa.JpaMetaData;
 import java.util.ArrayList;
@@ -83,20 +82,25 @@ public class JpaTypeProvider implements TypeProvider {
         
         final List<Class> types = new ArrayList();
         
-        final Set<Class> keys = this.typeColumnNames.keySet();
+        final Set<Class> entityTypes = this.typeColumnNames.keySet();
         
-        for(Class key : keys) {
+        for(Class entityType : entityTypes) {
             
-            final Set<String> columnNames = this.typeColumnNames.get(key); 
+            final Set<String> columnNames = this.typeColumnNames.get(entityType); 
+            
+            if(logger.isLoggable(Level.FINER)) {
+                logger.log(Level.FINER, "Name {0}, entityType: {1}, columns: {2}", 
+                        new Object[]{name, entityType.getName(), columnNames});
+            }
             
             if(columnNames.contains(name)) {
                 
                 if(logger.isLoggable(Level.FINER)) {
                     logger.log(Level.FINER, "Found {0} in {1} having columns: {2}", 
-                            new Object[]{name, key.getName(), columnNames});
+                            new Object[]{name, entityType.getName(), columnNames});
                 }
                 
-                final Class type = this.getEntityUpdater(key).getMethod(false, name).getReturnType();
+                final Class type = this.getEntityUpdater(entityType).getMethod(false, name).getReturnType();
                 
                 types.add(type);
             }

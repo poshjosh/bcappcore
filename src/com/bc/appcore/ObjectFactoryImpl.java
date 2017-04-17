@@ -18,10 +18,13 @@ package com.bc.appcore;
 
 import com.bc.appcore.exceptions.ObjectFactoryException;
 import com.bc.appcore.exceptions.ObjectNotSupportedException;
+import com.bc.appcore.jpa.EntityMapBuilder;
 import com.bc.appcore.jpa.JpaTypeProvider;
+import com.bc.appcore.jpa.RecursionFilterImpl;
 import com.bc.appcore.jpa.predicates.MasterPersistenceUnitTest;
 import com.bc.appcore.parameter.ParametersBuilder;
 import com.bc.appcore.parameter.ParametersBuilderImpl;
+import com.bc.appcore.predicates.AcceptAll;
 import com.bc.appcore.util.LoggingConfigManager;
 import com.bc.appcore.util.LoggingConfigManagerImpl;
 import com.bc.appcore.util.RawTextHandler;
@@ -29,8 +32,10 @@ import com.bc.appcore.util.Settings;
 import com.bc.appcore.util.SettingsImpl;
 import com.bc.appcore.util.TextHandler;
 import com.bc.jpa.JpaContext;
+import com.bc.jpa.sync.JpaSync;
 import com.bc.jpa.util.EntityFromMapBuilder;
 import com.bc.jpa.util.EntityFromMapBuilderImpl;
+import com.bc.util.MapBuilder;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Objects;
@@ -55,24 +60,17 @@ public class ObjectFactoryImpl implements ObjectFactory {
             if(type.isEnum() || type.isPrimitive()) {
                 throw new UnsupportedOperationException("Instiantiation not supported for type: " + type);
             }else if(type.equals(EntityFromMapBuilder.class)){
-                final JpaContext jpaContext = app.getJpaContext();
-                final Predicate<String> acceptMasterPuNames = new MasterPersistenceUnitTest();
-                final String [] puNames = jpaContext.getMetaData().getPersistenceUnitNames();
-                final Set<String> accepted = new HashSet();
-                for(String puName : puNames) {
-                    if(!acceptMasterPuNames.test(puName)) {
-                        continue;
-                    }
-                    accepted.add(puName);
-                }
-                output = new EntityFromMapBuilderImpl(jpaContext, accepted);
+                output = new EntityFromMapBuilderImpl(app.getJpaContext(), this.getPersistenceUnitNames());
+            }else if(type.equals(MapBuilder.class)){
+                output = new EntityMapBuilder(app);
             }else if(type.equals(ObjectFactory.class)){
                 output = new ObjectFactoryImpl(app);
             }else if(type.equals(ResourceContext.class)){
                 output = new ResourceContextImpl();
+            }else if(type.equals(MapBuilder.RecursionFilter.class)){
+                output = new RecursionFilterImpl(app);
             }else if(type.equals(TypeProvider.class)){
-                final Predicate<String> acceptMasterPuNames = new MasterPersistenceUnitTest();
-                output = new JpaTypeProvider(app, acceptMasterPuNames);
+                output = new JpaTypeProvider(app, this.getPersistenceUnitNameTest());
             }else if(type.equals(ParametersBuilder.class)){
                 output = new ParametersBuilderImpl();
             }else if(type.equals(LoggingConfigManager.class)){
@@ -88,6 +86,26 @@ public class ObjectFactoryImpl implements ObjectFactory {
             throw new ObjectFactoryException(e);
         }
         return (T)output;
+    }
+    
+    public Set<String> getPersistenceUnitNames() {
+        final JpaContext jpaContext = app.getJpaContext();
+        final Predicate<String> puNameTest = this.getPersistenceUnitNameTest();
+        final String [] puNames = jpaContext.getMetaData().getPersistenceUnitNames();
+        final Set<String> accepted = new HashSet();
+        for(String puName : puNames) {
+            if(!puNameTest.test(puName)) {
+                continue;
+            }
+            accepted.add(puName);
+        }
+        return accepted;
+    }
+    
+    public Predicate<String> getPersistenceUnitNameTest() {
+        final Predicate<String> puNameTest = 
+                app.getJpaSync().equals(JpaSync.NO_OP) ? new AcceptAll() : new MasterPersistenceUnitTest();
+        return puNameTest;
     }
 
     public AppCore getApp() {
