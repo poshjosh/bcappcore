@@ -17,13 +17,16 @@ package com.bc.appcore.util;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.logging.Level;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Mar 9, 2017 12:25:39 PM
  */
 public interface LoggingConfigManager {
 
-    void init(String sourcePath, String targetPath) throws URISyntaxException, IOException;
+    void init(String sourcePath, String targetPath, Level level) throws URISyntaxException, IOException;
     
-    void read(String path)throws URISyntaxException, IOException;
+    void read(String path, Level level)throws URISyntaxException, IOException;
+    
+    void updateLevel(String resourcePath, Level level) throws IOException;
 }

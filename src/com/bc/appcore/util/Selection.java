@@ -23,4 +23,6 @@ package com.bc.appcore.util;
 public interface Selection {
     
     Object getValue();
+    
+    String getDisplayValue();
 }

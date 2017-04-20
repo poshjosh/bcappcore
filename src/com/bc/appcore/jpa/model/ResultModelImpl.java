@@ -41,6 +41,7 @@ import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import com.bc.appcore.jpa.SelectionContext;
+import com.bc.jpa.dao.BuilderForDelete;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Mar 25, 2017 10:10:29 AM
@@ -57,6 +58,10 @@ public class ResultModelImpl<T> implements ResultModel<T> {
     }
     
     private transient static final Logger logger = Logger.getLogger(ResultModelImpl.class.getName());
+    
+    public static final String PERSIST = "Persist";
+    public static final String MERGE = "Merge";
+    public static final String REMOVE = "Remove";
 
     private final AppCore app;
     
@@ -326,33 +331,99 @@ public class ResultModelImpl<T> implements ResultModel<T> {
         return 0;
     }
     
-    public void update(Object entity, String columnName, Object value) {
+    public void update(Object entity, String columnName, Object columnValue) {
         
         final Class entityClass = entity.getClass();
         
         if(logger.isLoggable(Level.FINE)) {
             logger.log(Level.FINE, "Setting {0} = {1} {2} for {3}", 
-                    new Object[]{columnName, value.getClass().getSimpleName(), value, entity});
+                    new Object[]{columnName, columnValue.getClass().getSimpleName(), columnValue, entity});
         }
+        
+        final String actionId = this.getUpdateActionId(entityClass, entity, columnName, columnValue);
+                
+        this.update(entityClass, entity, columnName, columnValue, actionId);
+    }
+    
+    public String getUpdateActionId(Class entityClass, Object entity, 
+            String columnName, Object columnValue) {
         
         final EntityUpdater updater = this.entityUpdaters.get(entityClass);
         
         final Object idVal = updater.getId(entity);
-        updater.setValue(entity, columnName, value);
-        if(idVal != null) {
-            app.getJpaContext().getDao(entityClass).begin().mergeAndClose(entity);
-            app.getSlaveUpdates().addMerge(entity);
-        }else{
-            try{
-                app.getJpaContext().getDao(entityClass).begin().persistAndClose(entity);
-                app.getSlaveUpdates().addPersist(entity);
-            }catch(Exception ignored) {
-                app.getJpaContext().getDao(entityClass).begin().mergeAndClose(entity);
-                app.getSlaveUpdates().addMerge(entity);
+        
+        if(logger.isLoggable(Level.FINER)) {
+            logger.log(Level.FINER, "Entity: {0}, id: {1}", new Object[]{entity, idVal});
+        }
+        
+        final boolean hasIdValue = idVal != null;
+        
+        return hasIdValue ? MERGE : PERSIST;
+    }
+    
+    public void update(Class entityClass, Object entity, 
+            String columnName, Object columnValue, String actionId) {
+        
+        final EntityUpdater updater = this.entityUpdaters.get(entityClass);
+        
+        switch(actionId) {
+            
+            case PERSIST:
+                
+                updater.setValue(entity, columnName, columnValue);
+                
+                try{
+                    this.persist(entityClass, entity);
+                }catch(RuntimeException mayBeIgnored) {
+                    try{
+                        this.merge(entityClass, entity);
+                    }catch(RuntimeException ignored) {
+                        throw mayBeIgnored;
+                    }
+                }
+                break;
+                
+            case MERGE:
+                
+                updater.setValue(entity, columnName, columnValue);
+                
+                this.merge(entityClass, entity); 
+                break;
+                
+            case REMOVE:
+                this.remove(entityClass, entity); 
+                break;
+                
+            default: throw new UnsupportedOperationException("Unsupported action: "+actionId);    
+        }
+    }
+
+    public void merge(Class entityClass, Object entity) {
+        app.getJpaContext().getDao(entityClass).begin().mergeAndClose(entity);
+        app.getSlaveUpdates().addMerge(entity);
+    }
+    
+    public void persist(Class entityClass, Object entity) {
+        app.getJpaContext().getDao(entityClass).begin().persistAndClose(entity);
+        app.getSlaveUpdates().addPersist(entity);
+    }
+    
+    public void remove(Class entityClass, Object entity) {
+        final Object idValue = this.entityUpdaters.get(entityClass).getId(entity);
+        try(final BuilderForDelete dao = app.getJpaContext().getBuilderForDelete(entityClass)) {
+            final Object managed = dao.find(entityClass, idValue);
+            entity = managed;
+            if(logger.isLoggable(Level.FINER)) {
+                logger.log(Level.FINER, "Entity type: {0}, id: {1}, entity: {2}", 
+                        new Object[]{entityClass.getName(), idValue, entity});
+            }
+            if(entity != null) {
+                dao.begin().remove(entity).commit();
+                app.getSlaveUpdates().addRemove(entity);
             }
         }
     }
-    
+
     public <E> List<E> filter(List<E> list, Predicate<E> test) {
         final List<E> output;
         if(list == null || list.isEmpty()) {

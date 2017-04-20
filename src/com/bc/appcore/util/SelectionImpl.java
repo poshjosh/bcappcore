@@ -16,7 +16,6 @@
 
 package com.bc.appcore.util;
 
-import com.bc.appcore.util.Selection;
 import java.util.Objects;
 
 /**
@@ -25,17 +24,18 @@ import java.util.Objects;
  */
 public class SelectionImpl implements Selection {
 
-    private final String name;
+    private final String displayValue;
     
     private final Object value;
 
     public SelectionImpl(String name, Object value) {
-        this.name = name == null ? value.toString() : name;
+        this.displayValue = name == null ? value.toString() : name;
         this.value = value;
     }
 
-    public String getName() {
-        return name;
+    @Override
+    public String getDisplayValue() {
+        return displayValue;
     }
 
     @Override
@@ -70,6 +70,6 @@ public class SelectionImpl implements Selection {
 
     @Override
     public String toString() {
-        return name;
+        return this.getDisplayValue();
     }
 }

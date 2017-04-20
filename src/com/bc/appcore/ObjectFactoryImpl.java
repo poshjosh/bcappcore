@@ -24,7 +24,6 @@ import com.bc.appcore.jpa.RecursionFilterImpl;
 import com.bc.appcore.jpa.predicates.MasterPersistenceUnitTest;
 import com.bc.appcore.parameter.ParametersBuilder;
 import com.bc.appcore.parameter.ParametersBuilderImpl;
-import com.bc.appcore.predicates.AcceptAll;
 import com.bc.appcore.util.LoggingConfigManager;
 import com.bc.appcore.util.LoggingConfigManagerImpl;
 import com.bc.appcore.util.RawTextHandler;
@@ -32,7 +31,6 @@ import com.bc.appcore.util.Settings;
 import com.bc.appcore.util.SettingsImpl;
 import com.bc.appcore.util.TextHandler;
 import com.bc.jpa.JpaContext;
-import com.bc.jpa.sync.JpaSync;
 import com.bc.jpa.util.EntityFromMapBuilder;
 import com.bc.jpa.util.EntityFromMapBuilderImpl;
 import com.bc.util.MapBuilder;
@@ -103,9 +101,7 @@ public class ObjectFactoryImpl implements ObjectFactory {
     }
     
     public Predicate<String> getPersistenceUnitNameTest() {
-        final Predicate<String> puNameTest = 
-                app.getJpaSync().equals(JpaSync.NO_OP) ? new AcceptAll() : new MasterPersistenceUnitTest();
-        return puNameTest;
+        return new MasterPersistenceUnitTest();
     }
 
     public AppCore getApp() {

@@ -59,23 +59,16 @@ public class LoggingConfigManagerImpl implements LoggingConfigManager {
     
     private final ResourceContext resourceContext;
     
-    private final Level level;
-    
     private final List<String> readOnly = Arrays.asList(new String[]{
         "java", "javax", "sun", "com.sun", "com.mysql", "org"
     });
     
     public LoggingConfigManagerImpl(ResourceContext resourceContext) {
-        this(resourceContext, null);
-    }
-    
-    public LoggingConfigManagerImpl(ResourceContext resourceContext, Level level) {
         this.resourceContext = resourceContext;
-        this.level = level;
     }
     
     @Override
-    public void init(String source, String target) 
+    public void init(String source, String target, Level level) 
             throws URISyntaxException, IOException {
         
         logger.log(Level.INFO, "Logging config paths. Source: {0}, target: {1}", 
@@ -98,15 +91,10 @@ public class LoggingConfigManagerImpl implements LoggingConfigManager {
                     StandardOpenOption.WRITE);
         }
         
-        this.read(target);
+        this.read(target, level);
     }
     
     @Override
-    public void read(String resourcePath) throws URISyntaxException, IOException {
-        
-        this.read(resourcePath, level);
-    }
-
     public void read(String resourcePath, Level level) throws URISyntaxException, IOException {
         
         if(level != null) {
@@ -132,6 +120,7 @@ public class LoggingConfigManagerImpl implements LoggingConfigManager {
         logger.log(Level.INFO, "Read {0} from {1}", new Object[]{loggingFilePropertyName, resourcePath});
     }
     
+    @Override
     public void updateLevel(String resourcePath, Level level) throws IOException {
         
         final Properties props = new Properties();
