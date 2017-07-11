@@ -14,21 +14,30 @@
  * limitations under the License.
  */
 
-package com.bc.appcore;
+package com.bc.appcore.predicates;
 
-import com.bc.appcore.exceptions.ObjectFactoryException;
-import java.util.function.Supplier;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.function.Predicate;
 
 /**
- * @author Chinomso Bassey Ikwuagwu on Mar 29, 2017 4:19:05 PM
+ * @author Chinomso Bassey Ikwuagwu on May 27, 2017 1:13:24 PM
  */
-public interface ObjectFactory {
-    
-    <T> void registerDefault(Class<T> type, Supplier<T> typeSupplier);
-    
-    void deregisterDefault(Class type);
-    
-    <T> T getOrDefault(Class<T> type, T outputIfNone);
-    
-    <T> T getOrException(Class<T> type) throws ObjectFactoryException;
+public class AcceptEachTypeOnlyOnce<T> implements Predicate<T> {
+
+    private final Set<T> alreadyAccepted;
+
+    public AcceptEachTypeOnlyOnce() {
+        this.alreadyAccepted = new HashSet();
+    }
+
+    @Override
+    public boolean test(T t) {
+        if(this.alreadyAccepted.contains(t)) {
+            return false;
+        }else{
+            this.alreadyAccepted.add(t);
+            return true;
+        }
+    }
 }

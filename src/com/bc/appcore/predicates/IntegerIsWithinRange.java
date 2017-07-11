@@ -16,23 +16,22 @@
 
 package com.bc.appcore.predicates;
 
-import java.util.Date;
 import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * @author Chinomso Bassey Ikwuagwu on Mar 10, 2017 4:37:46 PM
+ * @author Chinomso Bassey Ikwuagwu on May 9, 2017 6:06:05 PM
  */
-public class DateIsWithinRange implements Predicate<Date> {
+public class IntegerIsWithinRange implements Predicate<Integer> {
     
-    private transient static final Logger logger = Logger.getLogger(DateIsWithinRange.class.getName());
+    private transient static final Logger logger = Logger.getLogger(IntegerIsWithinRange.class.getName());
 
-    private final Date from;
+    private final Integer from;
     
-    private final Date to;
+    private final Integer to;
 
-    public DateIsWithinRange(Date from, Date to) {
+    public IntegerIsWithinRange(Integer from, Integer to) {
         this.from = from;
         this.to = to;
         if(logger.isLoggable(Level.FINE)) {
@@ -41,18 +40,20 @@ public class DateIsWithinRange implements Predicate<Date> {
     }
     
     @Override
-    public boolean test(Date date) {
+    public boolean test(Integer number) {
+        
         boolean accept = false;
+        
         if(from != null && to != null) {
-            if(date != null && (date.after(from) || date.equals(from))  && date.before(to)) {
+            if(number != null && number >= from  && number < to) {
                 accept = true;
             }
         }else if(from == null && to != null){
-            if(date != null && date.before(to)) {
+            if(number != null && number < to) {
                 accept = true;
             }
         }else if(from != null && to == null){
-            if(date != null && (date.after(from) || date.equals(from))) {
+            if(number != null && number >= from) {
                 accept = true;
             }
         }else{
@@ -60,9 +61,10 @@ public class DateIsWithinRange implements Predicate<Date> {
         }
         
         if(logger.isLoggable(Level.FINER)) {
-            logger.log(Level.FINER, "Accepted: {0}, date: {1}", new Object[]{accept, date});
+            logger.log(Level.FINER, "Accepted: {0}, number: {1}", new Object[]{accept, number});
         }
         
         return accept;
     }
 }
+

@@ -14,25 +14,29 @@
  * limitations under the License.
  */
 
-package com.bc.appcore.jpa;
+package com.bc.appcore.predicates;
 
-import com.bc.appcore.AppCore;
-import com.bc.jpa.util.MapBuilderForEntity;
-import com.bc.util.MapBuilder;
+import java.util.Objects;
+import java.util.function.Predicate;
 
 /**
- * @author Chinomso Bassey Ikwuagwu on Apr 15, 2017 9:22:31 PM
+ * @author Chinomso Bassey Ikwuagwu on May 6, 2017 6:42:19 PM
  */
-public class EntityMapBuilder extends MapBuilderForEntity {
+public class IsSubClass implements Predicate<Class> {
+    
+    private final Class test;
 
-    private final AppCore app;
-
-    public EntityMapBuilder(AppCore app) {
-        this.app = app;
-        this.recursionFilter(app.get(MapBuilder.RecursionFilter.class));
+    public IsSubClass(Class test) {
+        this.test = Objects.requireNonNull(test);
     }
 
-    public AppCore getApp() {
-        return app;
+    @Override
+    public boolean test(Class candidate) {
+        try{
+            candidate.asSubclass(test);
+            return true;
+        }catch(ClassCastException ignored) {
+            return false;
+        }
     }
 }

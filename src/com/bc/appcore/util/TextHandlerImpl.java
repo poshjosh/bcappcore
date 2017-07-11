@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
 /**
  * @author Chinomso Bassey Ikwuagwu on Feb 25, 2017 8:17:32 PM
  */
-public class RawTextHandler implements TextHandler {
+public class TextHandlerImpl implements TextHandler {
     
     private final SimpleDateFormat dateFormat = new SimpleDateFormat();
     
@@ -54,10 +54,10 @@ public class RawTextHandler implements TextHandler {
     
     private final Pattern punctPattern = Pattern.compile("\\p{Punct}");
     
-    public RawTextHandler() { }
+    public TextHandlerImpl() { }
     
 //    public static void main(String [] args) {
-//        RawTextHandler th = new RawTextHandler();
+//        TextHandlerImpl th = new TextHandlerImpl();
 //        final String cellContents = "NAF/527/LOG/COMMS dated 5 Oct 16";
 //        final String trackStartStr = th.isNullOrEmpty(cellContents) ? null : th.getLastDateStr(cellContents);
 //System.out.println(trackStartStr);        

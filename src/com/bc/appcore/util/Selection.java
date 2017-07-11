@@ -19,10 +19,19 @@ package com.bc.appcore.util;
 /**
  * Two instances of this class are equal if and only if their values are equal.
  * @author Chinomso Bassey Ikwuagwu on Mar 28, 2017 4:46:17 PM
+ * @param <T> The type of the value this selection holds
  */
-public interface Selection {
+public interface Selection<T> {
     
-    Object getValue();
+    static <X> Selection<X> from(X value) {
+        return from(String.valueOf(value), value);
+    }
+
+    static <X> Selection<X> from(String displayValue, X value) {
+        return new SelectionImpl(displayValue, value);
+    }
+    
+    T getValue();
     
     String getDisplayValue();
 }

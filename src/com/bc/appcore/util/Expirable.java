@@ -16,6 +16,7 @@
 
 package com.bc.appcore.util;
 
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -23,11 +24,11 @@ import java.util.concurrent.TimeUnit;
  */
 public interface Expirable<T> {
     
-    public static Expirable from(int time, TimeUnit timeUnit) {
+    public static Expirable from(long time, TimeUnit timeUnit) {
         return from(null, time, timeUnit);
     }
     
-    public static <T> Expirable<T> from(T t, int time, TimeUnit timeUnit) {
+    public static <T> Expirable<T> from(T t, long time, TimeUnit timeUnit) {
         final long expiryTime = System.currentTimeMillis() + timeUnit.toMillis(time);
         final Expirable<T> e = new Expirable() {
             @Override
@@ -35,8 +36,8 @@ public interface Expirable<T> {
                 return System.currentTimeMillis() > expiryTime;
             }
             @Override
-            public T get() {
-                return t == null ? (T)this : t;
+            public Optional<T> get() {
+                return Optional.ofNullable(t);
             }
         };
         return e;
@@ -44,5 +45,5 @@ public interface Expirable<T> {
     
     boolean isExpired();
     
-    T get();
+    Optional<T> get();
 }

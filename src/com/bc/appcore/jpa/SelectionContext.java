@@ -17,13 +17,46 @@
 package com.bc.appcore.jpa;
 
 import com.bc.appcore.util.Selection;
+import com.bc.appcore.util.SelectionValues;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Mar 29, 2017 8:22:09 PM
  */
-public interface SelectionContext {
+public interface SelectionContext extends SelectionValues<Class> {
     
-    Selection[] getSelectionValues(Class entityType);
+    SelectionContext NO_OP = new SelectionContext() {
+        @Override
+        public boolean isSelectionType(Class entityType) { return false; }
+        @Override
+        public String getSelectionColumn(Class entityType, String outputIfNone) { return outputIfNone; }
+        @Override
+        public List<Selection> getSelectionValues(Class entityType) { return Collections.EMPTY_LIST; }
+        @Override
+        public <T> Selection<T> getDefaultSelection(Class<T> entityType, String columnName) {
+            throw new UnsupportedOperationException("Not supported."); 
+        }
+        @Override
+        public <T> Selection<T> getSelection(T entity) {
+            Objects.requireNonNull(entity);
+            final Class entityType = entity.getClass();
+            return this.getSelection(entityType, entity, this.getSelectionColumn(entityType, null));
+        }
+        @Override
+        public <T> Selection<T> getSelection(Class<T> entityType, T entity, String columnName) {
+            throw new UnsupportedOperationException("Not supported."); 
+        }
+    };
+    
+    boolean isSelectionType(Class entityType);
     
     String getSelectionColumn(Class entityType, String outputIfNone);
+    
+    <T> Selection<T> getDefaultSelection(Class<T> entityType, String columnName);
+    
+    <T> Selection<T> getSelection(T entity);
+    
+    <T> Selection<T> getSelection(Class<T> entityType, T entity, String columnName);
 }

@@ -14,21 +14,21 @@
  * limitations under the License.
  */
 
-package com.bc.appcore;
+package com.bc.appcore.typeprovider;
 
-import com.bc.appcore.exceptions.ObjectFactoryException;
-import java.util.function.Supplier;
+import java.util.Collections;
+import java.util.List;
 
 /**
- * @author Chinomso Bassey Ikwuagwu on Mar 29, 2017 4:19:05 PM
+ * @author Chinomso Bassey Ikwuagwu on Mar 22, 2017 2:42:02 PM
  */
-public interface ObjectFactory {
+public interface TypeProvider extends MemberTypeProvider {
     
-    <T> void registerDefault(Class<T> type, Supplier<T> typeSupplier);
+    static TypeProvider from(final Class parentType, final Class type) {
+        return new TypeProviderImpl(Collections.singleton(parentType), MemberTypeProvider.from(type));
+    }
     
-    void deregisterDefault(Class type);
+    List<Class> getParentTypeList(Class valueType, String name, Object value);
     
-    <T> T getOrDefault(Class<T> type, T outputIfNone);
-    
-    <T> T getOrException(Class<T> type) throws ObjectFactoryException;
+    List<Class> getParentTypeList(String name, Object value);
 }

@@ -67,7 +67,7 @@ public class SearchContextImpl<T> implements SearchContext<T>  {
 
     @Override
     public Class<T> getResultType() {
-        return this.resultModel.getType();
+        return this.resultModel.getEntityType();
     }
 
     @Override

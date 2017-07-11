@@ -16,22 +16,33 @@
 
 package com.bc.appcore.predicates;
 
+import com.bc.util.ReflectionUtil;
 import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 import java.util.function.Predicate;
 
 /**
- * @author Chinomso Bassey Ikwuagwu on Mar 28, 2017 10:20:52 PM
+ * @author Chinomso Bassey Ikwuagwu on May 6, 2017 2:35:45 PM
  */
-public class MethodHasReturnType implements Predicate<Method> {
+public class MethodHasGenericReturnType implements Predicate<Method> {
 
-    private final Class returnType;
+    private final Class genericReturnType;
     
-    public MethodHasReturnType(Class returnType) {
-        this.returnType = returnType;
+    private final ReflectionUtil reflection;
+
+    public MethodHasGenericReturnType(Class genericReturnType) {
+        this.genericReturnType = genericReturnType;
+        this.reflection = new ReflectionUtil();
     }
 
     @Override
     public boolean test(Method method) {
-        return this.returnType.isAssignableFrom(method.getReturnType());
+        final Type type = this.reflection.getGenericReturnTypeArguments(method)[0];
+        if(type instanceof Class) {
+            return this.genericReturnType.isAssignableFrom((Class)type);
+        }else{
+            return false;
+        }
     }
 }
+

@@ -14,21 +14,12 @@
  * limitations under the License.
  */
 
-package com.bc.appcore;
-
-import com.bc.appcore.exceptions.ObjectFactoryException;
-import java.util.function.Supplier;
+package com.bc.appcore.exceptions;
 
 /**
- * @author Chinomso Bassey Ikwuagwu on Mar 29, 2017 4:19:05 PM
+ * @author Chinomso Bassey Ikwuagwu on Mar 28, 2017 10:41:03 AM
  */
-public interface ObjectFactory {
-    
-    <T> void registerDefault(Class<T> type, Supplier<T> typeSupplier);
-    
-    void deregisterDefault(Class type);
-    
-    <T> T getOrDefault(Class<T> type, T outputIfNone);
-    
-    <T> T getOrException(Class<T> type) throws ObjectFactoryException;
+public interface HasUserMessage {
+
+    String getUserMessage();
 }

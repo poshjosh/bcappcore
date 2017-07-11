@@ -16,14 +16,14 @@
 
 package com.bc.appcore.jpa.model;
 
-import java.util.Set;
+import java.util.List;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Feb 14, 2017 8:20:41 PM
  */
 public interface ResultModel<T> {
     
-    Class<T> getType();
+    Class<T> getEntityType();
     
     int getSerialColumnIndex();
     
@@ -35,15 +35,13 @@ public interface ResultModel<T> {
     
     Object set(T entity, int rowIndex, String columnName, Object value);
     
-    boolean isCellEditable(int rowIndex, int columnIndex);
-    
     Class getColumnClass(int columnIndex);
     
-    Set<String> getColumnNames();
+    List<String> getColumnNames();
     
     String getColumnName(int columnIndex);
     
-    Set<String> getColumnLabels();
+    List<String> getColumnLabels();
     
     String getColumnLabel(int columnIndex);
 }

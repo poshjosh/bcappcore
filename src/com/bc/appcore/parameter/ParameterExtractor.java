@@ -14,22 +14,20 @@
  * limitations under the License.
  */
 
-package com.bc.appcore;
+package com.bc.appcore.parameter;
 
-import java.util.function.BiFunction;
+import com.bc.appcore.parameter.ParameterException;
+import java.util.Map;
+import java.util.function.Predicate;
 
 /**
- * @author Chinomso Bassey Ikwuagwu on Apr 7, 2017 9:12:04 PM
+ * @author Chinomso Bassey Ikwuagwu on Apr 29, 2017 5:36:27 PM
  */
-public class TestSubClass implements BiFunction<Class, Class, Boolean> {
+public interface ParameterExtractor {
 
-    @Override
-    public Boolean apply(Class t, Class u) {
-        try{
-            t.asSubclass(u);
-            return Boolean.TRUE;
-        }catch(ClassCastException ignored) {
-            return Boolean.FALSE;
-        }
-    }
+    <T> T getFirstValue(Map<String, Object> params, Class<T> type) throws ParameterException;
+    
+    String getFirstKey(Map<String, Object> params, Predicate<String> keyTest) throws ParameterException;
+    
+    Object getFirstValue(Map<String, Object> params, Predicate valueTest) throws ParameterException;
 }

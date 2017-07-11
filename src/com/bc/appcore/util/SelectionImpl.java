@@ -28,8 +28,8 @@ public class SelectionImpl implements Selection {
     
     private final Object value;
 
-    public SelectionImpl(String name, Object value) {
-        this.displayValue = name == null ? value.toString() : name;
+    public SelectionImpl(String displayText, Object value) {
+        this.displayValue = displayText == null ? value.toString() : displayText;
         this.value = value;
     }
 

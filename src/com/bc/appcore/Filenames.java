@@ -16,19 +16,11 @@
 
 package com.bc.appcore;
 
-import com.bc.appcore.exceptions.ObjectFactoryException;
-import java.util.function.Supplier;
-
 /**
- * @author Chinomso Bassey Ikwuagwu on Mar 29, 2017 4:19:05 PM
+ * @author Chinomso Bassey Ikwuagwu on May 2, 2017 6:56:23 PM
  */
-public interface ObjectFactory {
-    
-    <T> void registerDefault(Class<T> type, Supplier<T> typeSupplier);
-    
-    void deregisterDefault(Class type);
-    
-    <T> T getOrDefault(Class<T> type, T outputIfNone);
-    
-    <T> T getOrException(Class<T> type) throws ObjectFactoryException;
+public interface Filenames {
+    String getWorkingDir();
+    String getLoggingConfigFile();
+    String getPropertiesFile();
 }

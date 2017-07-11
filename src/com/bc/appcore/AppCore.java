@@ -17,6 +17,7 @@
 package com.bc.appcore;
 
 import com.bc.appcore.actions.Action;
+import com.bc.appcore.exceptions.TargetNotFoundException;
 import com.bc.config.Config;
 import com.bc.config.ConfigService;
 import com.bc.jpa.JpaContext;
@@ -25,7 +26,6 @@ import com.bc.jpa.sync.JpaSync;
 import com.bc.jpa.sync.SlaveUpdates;
 import com.bc.appcore.html.HtmlBuilder;
 import com.bc.appcore.parameter.ParametersBuilder;
-import java.nio.file.Path;
 import java.text.DateFormat;
 import java.util.Calendar;
 import java.util.Locale;
@@ -34,23 +34,18 @@ import java.util.TimeZone;
 import javax.persistence.EntityManager;
 import com.bc.appcore.jpa.SearchContext;
 import com.bc.appcore.jpa.model.ResultModel;
-import com.bc.appcore.util.Expirable;
+import com.bc.appcore.util.ExpirableCache;
 import com.bc.appcore.util.Settings;
+import com.bc.util.JsonFormat;
 import java.util.Properties;
+import java.util.Set;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Feb 7, 2017 11:10:58 PM
  */
 public interface AppCore extends ObjectFactory {
     
-    Expirable addExpirable(Object id, Expirable expirable);
-    
-    Expirable getExpirable(Object id, Expirable outputIfNone);
-    
-    Expirable removeExpirable(Object id, Expirable outputIfNone);
-
-    @Override
-    <T> T get(Class<T> type);
+    String getName();
     
     void init();
     
@@ -62,9 +57,15 @@ public interface AppCore extends ObjectFactory {
     
     JpaSync getJpaSync();
     
-    Path getWorkingDir();
+    Filenames getFilenames();
     
     Map<String, Object> getAttributes();
+    
+    ExpirableCache<Object> getExpirableAttributes();
+    
+    <T> T removeExpirable(Class<T> type, Object key) throws TargetNotFoundException;
+    
+    <T> T getExpirable(Class<T> type, Object key) throws TargetNotFoundException;
     
     ConfigService getConfigService();
     
@@ -92,6 +93,14 @@ public interface AppCore extends ObjectFactory {
     
     JpaContext getJpaContext();
     
+    /**
+     * This returns the actual persistence unit names used by the application. And it is
+     * typically a subset of those returned by {@link #getJpaContext()#getPersistenceUnitNames()}.
+     * @return The names of the persistence units used by the application
+     * @see #getJpaContext() 
+     */
+    Set<String> getPersistenceUnitNames();
+    
     DateFormat getDateTimeFormat();
     
     DateFormat getDateFormat();
@@ -101,4 +110,6 @@ public interface AppCore extends ObjectFactory {
     TimeZone getTimeZone();
     
     Locale getLocale();
+    
+    JsonFormat getJsonFormat();
 }

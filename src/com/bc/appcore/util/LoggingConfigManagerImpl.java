@@ -18,7 +18,6 @@ package com.bc.appcore.util;
 
 import com.bc.appcore.ResourceContext;
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -71,25 +70,15 @@ public class LoggingConfigManagerImpl implements LoggingConfigManager {
     public void init(String source, String target, Level level) 
             throws URISyntaxException, IOException {
         
-        logger.log(Level.INFO, "Logging config paths. Source: {0}, target: {1}", 
-                new Object[]{source, target});
-        
         final Path loggingConfigPath = resourceContext.getPath(target);
         
-        final File loggingConfigFile = loggingConfigPath.toFile();
-        
-        final boolean exists = loggingConfigFile.exists();
-        
-        if(!exists) {
-            
-            logger.log(Level.INFO, "Copying: {0}, to: {1}", new Object[]{source, target});
-            
-            final StringBuilder contents = this.getContents(source);
-            Files.write(loggingConfigPath, contents.toString().getBytes(), 
-                    StandardOpenOption.CREATE, 
-                    StandardOpenOption.TRUNCATE_EXISTING, 
-                    StandardOpenOption.WRITE);
-        }
+        logger.log(Level.INFO, "Copying: {0}, to: {1}", new Object[]{source, target});
+
+        final StringBuilder contents = this.getContents(source);
+        Files.write(loggingConfigPath, contents.toString().getBytes(), 
+                StandardOpenOption.CREATE, 
+                StandardOpenOption.TRUNCATE_EXISTING, 
+                StandardOpenOption.WRITE);
         
         this.read(target, level);
     }
@@ -103,16 +92,16 @@ public class LoggingConfigManagerImpl implements LoggingConfigManager {
         
         final String loggingFilePropertyName = "java.util.logging.config.file";
         
-        logger.log(Level.INFO, "{0} = {1}", new Object[]{loggingFilePropertyName, System.getProperty(loggingFilePropertyName)});
+        logger.log(Level.FINE, "{0} = {1}", new Object[]{loggingFilePropertyName, System.getProperty(loggingFilePropertyName)});
         
         final Path path = this.getResourcePath(resourcePath, null);
         System.setProperty(loggingFilePropertyName, path==null?resourcePath:path.toString());
         
-        logger.log(Level.INFO, "Reading logging config file: {0}", resourcePath);
+        logger.log(Level.FINER, "Reading logging config file: {0}", resourcePath);
             
         try(InputStream in = this.getInputStream(resourcePath)) {
             
-            logger.log(Level.FINE, "Input stream: {0}", in);
+            logger.log(Level.FINER, "Input stream: {0}", in);
             
             LogManager.getLogManager().readConfiguration(in);
         }
@@ -121,13 +110,39 @@ public class LoggingConfigManagerImpl implements LoggingConfigManager {
     }
     
     @Override
+    public Path getLogsDir(String resourcePath, Path outputIfNone) throws IOException {
+    
+        final Path output;
+        
+        final Properties props = this.getProperties(resourcePath);
+        
+        final String pattern = props.getProperty("java.util.logging.FileHandler.pattern");
+        
+        if(pattern == null) {
+         
+            output = outputIfNone;
+        }else{
+            
+            final int n = pattern.lastIndexOf('/');
+            
+            if(n == -1) {
+                
+                output = outputIfNone;
+                
+            }else{
+                String path = pattern.substring(0, n);
+                path = path.replace("%t", System.getProperty("java.io.tmpdir"));
+                path = path.replace("%h", System.getProperty("user.home"));
+                output = Paths.get(path);
+            }
+        }
+        return output;
+    }
+    
+    @Override
     public void updateLevel(String resourcePath, Level level) throws IOException {
         
-        final Properties props = new Properties();
-
-        try(Reader reader = new InputStreamReader(this.getInputStream(resourcePath))) {
-            props.load(reader);
-        }
+        final Properties props = this.getProperties(resourcePath);
 
         final StringBuilder comments = new StringBuilder();
         comments.append(new Date()).append(' ');
@@ -163,6 +178,17 @@ public class LoggingConfigManagerImpl implements LoggingConfigManager {
         }
     }
     
+    public Properties getProperties(String resourcePath) throws IOException {
+        
+        final Properties props = new Properties();
+
+        try(Reader reader = new InputStreamReader(this.getInputStream(resourcePath))) {
+            props.load(reader);
+        }
+
+        return props;
+    }
+    
     public StringBuilder getContents(String resourcePath) throws IOException {
         try(BufferedReader br = new BufferedReader(new InputStreamReader(this.getInputStream(resourcePath)))) {
             final String nl = System.getProperty("line.separator");
@@ -180,7 +206,7 @@ public class LoggingConfigManagerImpl implements LoggingConfigManager {
         if(in == null) {
             in = new FileInputStream(path);
         }
-logger.log(Level.FINER, "InputStream: {0}", in);
+        logger.log(Level.FINER, "InputStream: {0}", in);
         return in;
     }
     
@@ -207,7 +233,7 @@ logger.log(Level.FINER, "InputStream: {0}", in);
         
         final URL url = resourceContext.getResource(path);
         
-        logger.log(Level.INFO, "Resolved resource: {0} to URL: {1}", new Object[]{path, url});
+        logger.log(Level.FINE, "Resolved resource: {0} to URL: {1}", new Object[]{path, url});
         
         return url == null ? Paths.get(path) : this.getPath(url.toURI(), outputIfNone);
     }
@@ -234,7 +260,7 @@ logger.log(Level.FINER, "InputStream: {0}", in);
             }
         }
         
-        logger.log(Level.INFO, "Resolved URI: {0} to Path: {1}", new Object[]{uri, output});
+        logger.log(Level.FINE, "Resolved URI: {0} to Path: {1}", new Object[]{uri, output});
         
         return output;
     }

@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-package com.bc.appcore;
+package com.bc.appcore.content;
 
 /**
- * @author Chinomso Bassey Ikwuagwu on Mar 22, 2017 2:42:02 PM
+ * @author Chinomso Bassey Ikwuagwu on May 5, 2017 12:37:26 PM
  */
-public interface TypeProvider {
-    
-    Class getType(String name, Object value, Class outputIfNone);
+public interface TextContent extends Content<String> {
+
 }

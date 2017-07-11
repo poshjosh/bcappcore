@@ -32,12 +32,12 @@
 
 package com.bc.appcore.parameter;
 
-import com.bc.appcore.exceptions.UserException;
+import com.bc.appcore.exceptions.HasUserMessage;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Jan 31, 2017 11:08:56 PM
  */
-public class ParameterException extends Exception implements UserException {
+public class ParameterException extends Exception implements HasUserMessage {
 
     /**
      * Creates a new instance of <code>ParameterException</code> without detail message.

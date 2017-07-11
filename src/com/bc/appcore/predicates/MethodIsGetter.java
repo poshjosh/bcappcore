@@ -14,28 +14,22 @@
  * limitations under the License.
  */
 
-package com.bc.appcore.util;
+package com.bc.appcore.predicates;
 
-import com.bc.appcore.TypeProvider;
+import java.lang.reflect.Method;
+import java.util.function.Predicate;
 
 /**
- * @author Chinomso Bassey Ikwuagwu on Apr 8, 2017 2:46:10 PM
+ * @author Chinomso Bassey Ikwuagwu on Apr 30, 2017 10:35:01 AM
  */
-public class SettingsTypeProvider implements TypeProvider {
+public class MethodIsGetter implements Predicate<Method> {
 
-    private final Settings settings;
+    public MethodIsGetter() { }
 
-    public SettingsTypeProvider(Settings settings) {
-        this.settings = settings;
-    }
-    
     @Override
-    public Class getType(String name, Object value, Class outputIfNone) {
-
-        name = settings.getName(name, name);
-
-        final Class type = settings.getValueType(name, outputIfNone);
-        
-        return type;
+    public boolean test(Method method) {
+        return method.getName().startsWith("get") && 
+                method.getParameterCount() == 0 && 
+                method.getReturnType() != null && method.getReturnType() != java.lang.Void.TYPE;
     }
 }

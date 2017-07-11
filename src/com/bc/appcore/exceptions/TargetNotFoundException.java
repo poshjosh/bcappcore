@@ -17,26 +17,22 @@
 package com.bc.appcore.exceptions;
 
 /**
- * @author Chinomso Bassey Ikwuagwu on Mar 28, 2017 11:24:32 AM
+ * @author Chinomso Bassey Ikwuagwu on Apr 29, 2017 6:01:49 PM
  */
-public class SearchResultsNotFoundException extends TargetNotFoundException implements HasUserMessage {
+public class TargetNotFoundException extends Exception {
 
     /**
-     * Creates a new instance of <code>SearchResultsNotFoundException</code> without detail message.
+     * Creates a new instance of <code>TargetNotFoundException</code> without detail message.
      */
-    public SearchResultsNotFoundException() { }
-
-
-    /**
-     * Constructs an instance of <code>SearchResultsNotFoundException</code> with the specified detail message.
-     * @param msg the detail message.
-     */
-    public SearchResultsNotFoundException(String msg) {
-        super(msg);
+    public TargetNotFoundException() {
     }
 
-    @Override
-    public String getUserMessage() {
-        return "Could not find Search Results. Please refresh.";
+
+    /**
+     * Constructs an instance of <code>TargetNotFoundException</code> with the specified detail message.
+     * @param msg the detail message.
+     */
+    public TargetNotFoundException(String msg) {
+        super(msg);
     }
 }

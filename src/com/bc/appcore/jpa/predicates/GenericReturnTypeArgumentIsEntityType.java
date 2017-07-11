@@ -14,24 +14,31 @@
  * limitations under the License.
  */
 
-package com.bc.appcore.predicates;
+package com.bc.appcore.jpa.predicates;
 
+import com.bc.util.ReflectionUtil;
 import java.lang.reflect.Method;
 import java.util.function.Predicate;
+import javax.persistence.Entity;
 
 /**
- * @author Chinomso Bassey Ikwuagwu on Mar 28, 2017 10:20:52 PM
+ * @author Chinomso Bassey Ikwuagwu on May 19, 2017 9:28:08 PM
  */
-public class MethodHasReturnType implements Predicate<Method> {
+public class GenericReturnTypeArgumentIsEntityType implements Predicate<Method> {
 
-    private final Class returnType;
-    
-    public MethodHasReturnType(Class returnType) {
-        this.returnType = returnType;
+    private final ReflectionUtil reflection;
+
+    public GenericReturnTypeArgumentIsEntityType() {
+        this.reflection = new ReflectionUtil();
     }
-
+    
     @Override
     public boolean test(Method method) {
-        return this.returnType.isAssignableFrom(method.getReturnType());
+        try{
+            final Class cls = (Class)reflection.getGenericReturnTypeArguments(method)[0];
+            return cls.getAnnotation(Entity.class) != null;
+        }catch(ClassCastException ignored) {
+            return false;
+        }
     }
 }

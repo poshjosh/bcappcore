@@ -53,10 +53,14 @@ public class SettingsImpl extends HashMap<String, Object> implements Settings {
         this.svc = Objects.requireNonNull(svc);
         this.data = Objects.requireNonNull(data);
         this.metaData = Objects.requireNonNull(metaData);
+        
         this.byLabels = new HashMap<>();
+        
         final Set<String> allNames = data.stringPropertyNames();
+        
+        logger.log(Level.FINER, "All names: {0}", allNames);
         for(String name : allNames) {
-            if(this.getAlias(name, null) != null||
+            if(this.getAlias(name, null) != null ||
                     this.getLabel(name, null) != null ||
                     this.getDescription(name, null) != null ||
                     this.getTypeName(name, null) != null ||
@@ -64,6 +68,11 @@ public class SettingsImpl extends HashMap<String, Object> implements Settings {
                 
                 final Object value = this.get(name, null);
                 
+                if(logger.isLoggable(Level.FINER)) {
+                    logger.log(Level.FINER, "Adding setting: {0} = {1]", 
+                            new Object[]{name, value});
+                }
+
                 super.put(name, value);
                 
                 this.byLabels.put(this.getLabel(name, name), value);

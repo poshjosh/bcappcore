@@ -17,6 +17,7 @@ package com.bc.appcore.util;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.nio.file.Path;
 import java.util.logging.Level;
 
 /**
@@ -24,6 +25,8 @@ import java.util.logging.Level;
  */
 public interface LoggingConfigManager {
 
+    Path getLogsDir(String resourcePath, Path outputIfNone) throws IOException;
+    
     void init(String sourcePath, String targetPath, Level level) throws URISyntaxException, IOException;
     
     void read(String path, Level level)throws URISyntaxException, IOException;

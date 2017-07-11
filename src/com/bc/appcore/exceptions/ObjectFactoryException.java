@@ -19,7 +19,7 @@ package com.bc.appcore.exceptions;
 /**
  * @author Chinomso Bassey Ikwuagwu on Mar 29, 2017 5:30:02 PM
  */
-public class ObjectFactoryException extends Exception {
+public class ObjectFactoryException extends RuntimeException {
 
     /**
      * Creates a new instance of <code>ObjectFactoryException</code> without detail message.

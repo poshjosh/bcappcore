@@ -14,12 +14,22 @@
  * limitations under the License.
  */
 
-package com.bc.appcore.exceptions;
+package com.bc.appcore.jpa.model;
 
 /**
- * @author Chinomso Bassey Ikwuagwu on Mar 28, 2017 10:41:03 AM
+ * @author Chinomso Bassey Ikwuagwu on May 24, 2017 2:43:31 PM
  */
-public interface UserException {
+public interface ColumnLabelProvider {
+    
+    ColumnLabelProvider RETURN_COLUMN_NAME = new ColumnLabelProvider() {
+        @Override
+        public String getColumnLabel(Class entityType, String columnName) { return columnName; }
 
-    String getUserMessage();
+        @Override
+        public String getColumnLabel(String columnName) { return columnName; }
+    };
+    
+    String getColumnLabel(Class entityType, String columnName);
+    
+    String getColumnLabel(String columnName);
 }
