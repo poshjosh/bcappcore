@@ -16,10 +16,12 @@
 
 package com.bc.appcore;
 
+import com.authsvc.client.AppAuthenticationSession;
 import com.bc.appcore.typeprovider.TypeProvider;
 import com.bc.appcore.exceptions.ObjectCreationException;
 import com.bc.appcore.exceptions.ObjectFactoryException;
 import com.bc.appcore.exceptions.ObjectNotSupportedException;
+import com.bc.appcore.functions.ReplaceNonWordCharsWithUnderscore;
 import com.bc.appcore.jpa.model.ColumnLabelProvider;
 import com.bc.appcore.jpa.model.ColumnLabelProviderImpl;
 import com.bc.appcore.parameter.ParameterExtractor;
@@ -29,7 +31,6 @@ import com.bc.appcore.parameter.ParametersBuilderImpl;
 import com.bc.appcore.typeprovider.EntityMemberTypeProvider;
 import com.bc.appcore.typeprovider.MemberTypeProvider;
 import com.bc.appcore.typeprovider.TypeProviderImpl;
-import com.bc.appcore.util.LoggingConfigManager;
 import com.bc.appcore.util.LoggingConfigManagerImpl;
 import com.bc.appcore.util.TextHandlerImpl;
 import com.bc.appcore.util.RelationAccess;
@@ -38,6 +39,8 @@ import com.bc.appcore.util.Settings;
 import com.bc.appcore.util.SettingsImpl;
 import com.bc.appcore.util.TextHandler;
 import com.bc.jpa.JpaMetaData;
+import com.bc.jpa.sync.MasterSlaveTypes;
+import com.bc.jpa.sync.impl.MasterSlaveTypesImpl;
 import com.bc.jpa.util.EntityFromMapBuilder;
 import com.bc.jpa.util.EntityFromMapBuilderImpl;
 import com.bc.jpa.util.MapBuilderForEntity;
@@ -50,12 +53,15 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Supplier;
+import com.bc.appcore.util.LoggingConfigManager;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Mar 29, 2017 4:24:26 PM
  */
-public class ObjectFactoryImpl implements ObjectFactory {
+public class ObjectFactoryImpl 
+        implements ObjectFactory {
     
     private final AppCore app;
     
@@ -130,10 +136,24 @@ public class ObjectFactoryImpl implements ObjectFactory {
 
             output = new ObjectFactoryImpl(app);
 
-        }else if(type.equals(ResourceContext.class)){
+        }else if(type.equals(User.class)) {    
 
-            output = new ResourceContextImpl();
-
+            final AppAuthenticationSession authSession = app.getAuthenticationSession();
+            if(authSession != null) {
+//@todo there should be ConfigNames.DEFAULT_EMAIL_HOST 
+                final String defaultEmailHost = app.getConfig().getString("defaultEmailHost", "gmail.com");
+                final Function<String, String> nameToEmail = 
+                        new ReplaceNonWordCharsWithUnderscore().andThen(
+                                (formattedName) -> formattedName + '@' + defaultEmailHost
+                        );
+                output = new UserImpl(authSession, nameToEmail);
+            }else{
+//                output = new LocalUser();
+                throw new UnsupportedOperationException(
+                        "Cannot create user without instance of: " + 
+                                AppAuthenticationSession.class.getName());
+            }
+            
         }else if(type.equals(ColumnLabelProvider.class)){
 
             output = new ColumnLabelProviderImpl(app.getConfig(), this.getOrException(TypeProvider.class));
@@ -163,7 +183,8 @@ public class ObjectFactoryImpl implements ObjectFactory {
 
         }else if(type.equals(LoggingConfigManager.class)){
 
-            output = new LoggingConfigManagerImpl(this.getOrException(ResourceContext.class));
+// @todo there should be ConfigNames.CHARSET_NAME etc             
+            output = new LoggingConfigManagerImpl(this.getApp().getConfig().getString("charsetName", "utf-8"));
 
         }else if(type.equals(TextHandler.class)){
 
@@ -175,7 +196,12 @@ public class ObjectFactoryImpl implements ObjectFactory {
 
         }else if(type.equals(Settings.class)){
 
-            output = new SettingsImpl(app.getConfigService(), app.getConfig(), app.getSettingsConfig());
+            output = new SettingsImpl(app);
+
+        }else if(type.equals(MasterSlaveTypes.class)){
+            
+            output = new MasterSlaveTypesImpl(app.getJpaContext().getMetaData(), 
+                    app.getMasterPersistenceUnitTest(), app.getSlavePersistenceUnitTest());
 
         }else{
 

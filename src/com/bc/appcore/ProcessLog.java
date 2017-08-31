@@ -14,14 +14,18 @@
  * limitations under the License.
  */
 
-package com.bc.appcore.actions;
+package com.bc.appcore;
 
 /**
- * @author Chinomso Bassey Ikwuagwu on Mar 31, 2017 10:36:57 AM
+ * @author Chinomso Bassey Ikwuagwu on Aug 10, 2017 11:16:33 AM
  */
-public interface ActionCommandsBase {
-
-    String DELETE_TEMP_FILES_IN_DIR = DeleteAllTempFilesInDir.class.getName();
+public interface ProcessLog {
     
-    String EXIT = Exit.class.getName();
+    void destroy();
+
+    void init();
+
+    void log(Throwable t);
+
+    void log(Object msg);
 }

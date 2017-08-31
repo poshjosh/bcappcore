@@ -16,6 +16,7 @@
 
 package com.bc.appcore.util;
 
+import com.bc.appcore.actions.Action;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -52,4 +53,5 @@ public interface Settings extends Map<String, Object> {
     String getTypeName(String name, String outputIfNone);
     String getAlias(String name, String outputIfNone);
     List getOptions(String name);
+    List<Action> getActions(String name);
 }

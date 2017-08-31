@@ -16,7 +16,6 @@
 
 package com.bc.appcore.jpa.model;
 
-import com.bc.appcore.AppCore;
 import com.bc.appcore.typeprovider.TypeProvider;
 import com.bc.jpa.EntityUpdater;
 import com.bc.jpa.JpaMetaData;
@@ -44,6 +43,7 @@ import com.bc.jpa.dao.BuilderForDelete;
 import java.util.Collection;
 import java.util.Optional;
 import javax.persistence.Entity;
+import com.bc.appcore.AppCore;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Mar 25, 2017 10:10:29 AM
@@ -242,8 +242,8 @@ public class ResultModelImpl<T> implements ResultModel<T> {
 
         final Object oldValue = updater.getValue(target, targetCol);
 
-        if(logger.isLoggable(Level.FINEST)) {
-            logger.log(Level.FINEST, rowIndex + " For {0}#{1}, {2}#{3}, to be updated to: {4} from: {5}", 
+        if(logger.isLoggable(Level.INFO)) {
+            logger.log(Level.INFO, rowIndex + " For {0}#{1}, {2}#{3}, to be updated to: {4} from: {5}", 
                     new Object[]{entity, columnName, target, targetCol, value, oldValue});
         }
 
@@ -392,9 +392,7 @@ public class ResultModelImpl<T> implements ResultModel<T> {
             logger.log(Level.FINER, "Entity: {0}, id: {1}", new Object[]{entity, idVal});
         }
         
-        final boolean hasIdValue = idVal != null;
-        
-        return hasIdValue ? MERGE : PERSIST;
+        return idVal == null ? PERSIST: MERGE;
     }
     
     public void update(Object entity, String entityColumn, 
@@ -402,26 +400,18 @@ public class ResultModelImpl<T> implements ResultModel<T> {
         
         final Class targetClass = target.getClass();
         
+        final EntityUpdater targetUpdater = this.entityUpdaters.get(target.getClass());
+        
         switch(actionId) {
             
             case PERSIST:
-                final EntityUpdater targetUpdater = this.entityUpdaters.get(target.getClass());
                 targetUpdater.setValue(target, targetColumn, targetValue);
-                try{
-                    this.persist(targetClass, target);
-                }catch(RuntimeException mayBeIgnored) {
-                    try{
-                        this.merge(targetClass, target);
-                    }catch(RuntimeException ignored) {
-                        throw mayBeIgnored;
-                    }
-                }
+                this.persist(targetClass, target);
                 this.updateEntityRelations(entity, target, actionId);
                 break;
                 
             case MERGE:
-                final EntityUpdater targetUpdater2 = this.entityUpdaters.get(target.getClass());
-                targetUpdater2.setValue(target, targetColumn, targetValue);
+                targetUpdater.setValue(target, targetColumn, targetValue);
                 this.merge(targetClass, target); 
                 this.updateEntityRelations(entity, target, actionId);
                 break;
@@ -469,12 +459,10 @@ public class ResultModelImpl<T> implements ResultModel<T> {
     
     public void merge(Class entityClass, Object entity) {
         app.getJpaContext().getDao(entityClass).begin().mergeAndClose(entity);
-        app.getSlaveUpdates().addMerge(entity);
     }
     
     public void persist(Class entityClass, Object entity) {
         app.getJpaContext().getDao(entityClass).begin().persistAndClose(entity);
-        app.getSlaveUpdates().addPersist(entity);
     }
     
     public void remove(Class entityClass, Object entity) {
@@ -488,7 +476,6 @@ public class ResultModelImpl<T> implements ResultModel<T> {
             }
             if(entity != null) {
                 dao.begin().remove(entity).commit();
-                app.getSlaveUpdates().addRemove(entity);
             }
         }
     }

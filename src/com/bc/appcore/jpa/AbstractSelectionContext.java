@@ -17,7 +17,6 @@
 package com.bc.appcore.jpa;
 
 import com.bc.appcore.util.Selection;
-import com.bc.appcore.AppCore;
 import com.bc.jpa.EntityUpdater;
 import com.bc.jpa.JpaContext;
 import com.bc.jpa.dao.BuilderForSelect;
@@ -29,6 +28,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import com.bc.appcore.AppCore;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Mar 31, 2017 5:28:32 PM

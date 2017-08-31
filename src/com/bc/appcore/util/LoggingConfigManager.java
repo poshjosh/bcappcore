@@ -13,23 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.bc.appcore.util;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.nio.file.Path;
+import java.util.Properties;
 import java.util.logging.Level;
 
 /**
- * @author Chinomso Bassey Ikwuagwu on Mar 9, 2017 12:25:39 PM
+ * @author Chinomso Bassey Ikwuagwu on Aug 20, 2017 7:40:01 PM
  */
 public interface LoggingConfigManager {
 
-    Path getLogsDir(String resourcePath, Path outputIfNone) throws IOException;
-    
-    void init(String sourcePath, String targetPath, Level level) throws URISyntaxException, IOException;
-    
-    void read(String path, Level level)throws URISyntaxException, IOException;
-    
-    void updateLevel(String resourcePath, Level level) throws IOException;
+    Path getLogsDir(String loggingConfigPath, Path outputIfNone) throws IOException;
+
+    Properties getProperties(String path) throws IOException;
+
+    void read(String loggingConfigPath) throws IOException;
+
+    void updateLevel(String loggingConfigPath, Level level) throws IOException;
 }

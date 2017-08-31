@@ -16,7 +16,6 @@
 
 package com.bc.appcore.parameter;
 
-import com.bc.appcore.parameter.ParameterException;
 import java.util.Map;
 import java.util.function.Predicate;
 
@@ -27,7 +26,13 @@ public interface ParameterExtractor {
 
     <T> T getFirstValue(Map<String, Object> params, Class<T> type) throws ParameterException;
     
+    <T> T getFirstValue(Map<String, Object> params, Class<T> type, T outputIfNone);
+    
     String getFirstKey(Map<String, Object> params, Predicate<String> keyTest) throws ParameterException;
     
+    String getFirstKey(Map<String, Object> params, Predicate<String> keyTest, String outputIfNone);
+    
     Object getFirstValue(Map<String, Object> params, Predicate valueTest) throws ParameterException;
+    
+    Object getFirstValue(Map<String, Object> params, Predicate valueTest, Object outputIfNone);
 }

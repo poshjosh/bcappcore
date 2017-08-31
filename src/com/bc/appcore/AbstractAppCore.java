@@ -16,17 +16,14 @@
 
 package com.bc.appcore;
 
+import com.authsvc.client.AppAuthenticationSession;
 import com.bc.appcore.exceptions.ObjectFactoryException;
-import com.bc.jpa.sync.SlaveUpdates;
 import com.bc.config.Config;
-import com.bc.config.ConfigService;
 import com.bc.jpa.JpaContext;
 import com.bc.jpa.dao.Dao;
-import com.bc.jpa.dao.DaoImpl;
 import com.bc.appcore.jpa.SearchContextImpl;
 import com.bc.jpa.sync.JpaSync;
 import java.io.File;
-import java.lang.reflect.InvocationTargetException;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashMap;
@@ -38,9 +35,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import com.bc.appcore.actions.Action;
 import com.bc.appcore.jpa.SearchContext;
-import com.bc.appcore.actions.ActionCommandsBase;
-import com.bc.appcore.actions.TaskExecutionException;
+import com.bc.appcore.functions.CreateActionFromClassName;
+import com.bc.appcore.exceptions.TaskExecutionException;
 import com.bc.appcore.exceptions.TargetNotFoundException;
+import com.bc.appcore.jpa.SlaveUpdateListenerImpl;
 import com.bc.appcore.jpa.model.ResultModel;
 import com.bc.appcore.parameter.ParameterException;
 import com.bc.appcore.predicates.AcceptAll;
@@ -55,6 +53,11 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import com.bc.jpa.sync.PendingUpdatesManager;
+import com.bc.appcore.properties.PropertiesContext;
+import com.bc.appcore.actions.ActionCommandsCore;
+import com.bc.appcore.actions.ActionQueue;
+import com.bc.appcore.actions.ActionQueueImpl;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Feb 7, 2017 11:26:00 PM
@@ -62,53 +65,73 @@ import java.util.function.Supplier;
 public abstract class AbstractAppCore implements AppCore {
     
     private transient static final Logger logger = Logger.getLogger(AbstractAppCore.class.getName());
-    
-    private final Filenames filenames;
-    
-    private final JpaContext jpaContext;
-    
-    private final ConfigService configService;
-    
-    private final Config config;
-    
-    private final Properties settingsConfig;
+
+    private final AppContext appContext;
     
     private final Map<String, Object> attributes;
     
-    private final SlaveUpdates slaveUpdates;
+    private final ActionQueue actionQueue;
     
-    private final JpaSync jpaSync;
-    
-    private final ExpirableCache<Object> expirableCache;
+    private User user;
     
     private ObjectFactory objectFactory;
     
     private volatile boolean shutdown;
     
-    public AbstractAppCore(
-            Filenames filenames, ConfigService configService, 
-            Config config, Properties settingsConfig, JpaContext jpaContext,
-            SlaveUpdates slaveUpdates, JpaSync jpaSync, ExpirableCache expirableCache) {
+    public AbstractAppCore(AppContext appContext) {
         
-        this.filenames = Objects.requireNonNull(filenames);
+        this.appContext = Objects.requireNonNull(appContext);
         
-        this.deleteTempFiles(Paths.get(this.filenames.getWorkingDir()).toFile());
-        
-        this.jpaContext = Objects.requireNonNull(jpaContext);
-        this.configService = Objects.requireNonNull(configService);
-        this.config = Objects.requireNonNull(config);
-        this.settingsConfig = Objects.requireNonNull(settingsConfig);
-        this.slaveUpdates = Objects.requireNonNull(slaveUpdates);
-        this.jpaSync = Objects.requireNonNull(jpaSync);
+        this.deleteTempFiles(Paths.get(this.appContext.getWorkingDir()).toFile());
         
         this.attributes = new HashMap<>(); 
         
-        this.expirableCache = Objects.requireNonNull(expirableCache);
+        this.actionQueue = new ActionQueueImpl();
+        
+        SlaveUpdateListenerImpl.app = AbstractAppCore.this;
     }
     
     @Override
     public void init() {
+        
         this.objectFactory = this.createObjectFactory();
+        
+        final Settings settingsAreValidatedThus = this.objectFactory.getOrException(Settings.class);
+        
+        this.user = this.objectFactory.getOrException(User.class);
+    }
+    
+    @Override
+    public void shutdown() {
+        
+        this.shutdown = true;
+        
+        this.attributes.clear();
+        
+        if(!this.getPendingMasterUpdatesManager().isStopRequested()) {
+            this.getPendingMasterUpdatesManager().requestStop();
+        }
+        
+        if(!this.getPendingSlaveUpdatesManager().isStopRequested()) {
+            this.getPendingSlaveUpdatesManager().requestStop();
+        }
+        
+        if(this.getJpaContext().isOpen()) {
+            this.getJpaContext().close();
+        }
+        
+        try{
+            this.getExpirableAttributes().close();
+        }catch(Exception e) {
+            logger.log(Level.WARNING, "Error closing: " + this.getExpirableAttributes().getClass().getName(), e);
+        }
+        
+        this.deleteTempFiles(Paths.get(this.getWorkingDir()).toFile());
+    }
+    
+    @Override
+    public User getUser() {
+        return this.user;
     }
     
     protected ObjectFactory createObjectFactory() {
@@ -117,7 +140,7 @@ public abstract class AbstractAppCore implements AppCore {
 
     @Override
     public String getName() {
-        return this.config.getProperty("application.name", this.getClass().getSimpleName());
+        return this.getConfig().getProperty("app.name", this.getClass().getSimpleName());
     }
 
     @Override
@@ -140,67 +163,23 @@ public abstract class AbstractAppCore implements AppCore {
         this.objectFactory.deregisterDefault(type);
     }
 
-    @Override
-    public boolean isShutdown() {
-        return this.shutdown;
-    }
-
-    @Override
-    public void shutdown() {
-        
-        this.shutdown = true;
-        
-        this.attributes.clear();
-        
-        if(!this.slaveUpdates.isStopRequested()) {
-            this.slaveUpdates.requestStop();
-        }
-        
-        if(this.jpaContext.isOpen()) {
-            this.jpaContext.close();
-        }
-        
-        try{
-            expirableCache.close();
-        }catch(Exception e) {
-            logger.log(Level.WARNING, "Error closing: "+expirableCache.getClass().getName(), e);
-        }
-        
-        this.deleteTempFiles(Paths.get(this.filenames.getWorkingDir()).toFile());
-    }
-    
     private void deleteTempFiles(File dir) {
         try{
             Map<String, Object> params = Collections.singletonMap(File.class.getName(), dir);
-            this.getAction(ActionCommandsBase.DELETE_TEMP_FILES_IN_DIR).execute(this, params);
+            this.getAction(ActionCommandsCore.DELETE_TEMP_FILES_IN_DIR).execute(this, params);
         }catch(ParameterException | TaskExecutionException e) {
             logger.log(Level.WARNING, "Unexpected error", e);
         }
     }
 
     @Override
-    public JpaSync getJpaSync() {
-        return this.jpaSync;
-    }
-    
-    @Override
-    public SlaveUpdates getSlaveUpdates() {
-        return this.slaveUpdates;
-    }
-    
-    @Override
-    public Filenames getFilenames() {
-        return filenames;
+    public boolean isShutdown() {
+        return this.shutdown;
     }
 
     @Override
     public Map<String, Object> getAttributes() {
         return this.attributes;
-    }
-
-    @Override
-    public ExpirableCache<Object> getExpirableAttributes() {
-        return this.expirableCache;
     }
 
     @Override
@@ -215,7 +194,9 @@ public abstract class AbstractAppCore implements AppCore {
         
     public <T> T fetchExpirable(Class<T> type, Object key, boolean getNotRemove) throws TargetNotFoundException {
     
-        final Expirable<T> expirable = getNotRemove ? this.expirableCache.get(key) : this.expirableCache.remove(key);
+        final ExpirableCache<Object> expirableCache = this.getExpirableAttributes();
+        
+        final Expirable<T> expirable = getNotRemove ? expirableCache.get(key) : expirableCache.remove(key);
 
         if(expirable == null) {
             throw new TargetNotFoundException("Session has expired. Begin process afresh");
@@ -233,30 +214,26 @@ public abstract class AbstractAppCore implements AppCore {
     }
 
     @Override
-    public UserBase getUser() {
-        return new UserBaseImpl("guest", false);
-    }
-
-    @Override
     public <T> SearchContext<T> getSearchContext(Class<T> entityType) {
         ResultModel<T> resultModel = this.getResultModel(entityType, null);
         return new SearchContextImpl<>(this, Objects.requireNonNull(resultModel), 20, true);
     }
 
     @Override
-    public Action getAction(String actionCommand) {
-        try{
-            final Class aClass = Class.forName(actionCommand);
-            final Action action = (Action)aClass.getConstructor().newInstance();
-            logger.log(Level.FINE, "Created action: {0}", action);
-            return action;
-        }catch(ClassNotFoundException | NoSuchMethodException | SecurityException | 
-                InstantiationException | IllegalAccessException | 
-                IllegalArgumentException | InvocationTargetException e) {
-            throw new RuntimeException(e);
-        }
+    public ActionQueue getActionQueue() {
+        return this.actionQueue;
     }
 
+    @Override
+    public Action getAction(String actionCommand) {
+        return this.getAction(actionCommand, Level.FINE);
+    }
+
+    public Action getAction(String actionCommand, Level logLevel) {
+        final Action action = new CreateActionFromClassName(logLevel).apply(actionCommand);
+        return action;
+    }
+    
     @Override
     public Calendar getCalendar() {
         return Calendar.getInstance(this.getTimeZone(), this.getLocale());
@@ -264,12 +241,7 @@ public abstract class AbstractAppCore implements AppCore {
 
     @Override
     public Dao getDao(Class entityType) {
-        return new DaoImpl(this.getEntityManager(entityType));
-    }
-
-    @Override
-    public JpaContext getJpaContext() {
-        return this.jpaContext;
+        return this.getJpaContext().getDao(entityType);
     }
 
     /**
@@ -281,7 +253,7 @@ public abstract class AbstractAppCore implements AppCore {
     @Override
     public Set<String> getPersistenceUnitNames() {
         final Predicate<String> puNameTest = this.getPersistenceUnitNameTest();
-        final String [] puNames = jpaContext.getMetaData().getPersistenceUnitNames();
+        final String [] puNames = this.getJpaContext().getMetaData().getPersistenceUnitNames();
         final Set<String> accepted = new HashSet();
         for(String puName : puNames) {
             if(!puNameTest.test(puName)) {
@@ -294,21 +266,6 @@ public abstract class AbstractAppCore implements AppCore {
     
     public Predicate<String> getPersistenceUnitNameTest() {
         return new AcceptAll();
-    }
-
-    @Override
-    public ConfigService getConfigService() {
-        return this.configService;
-    }
-
-    @Override
-    public Config getConfig() {
-        return this.config;
-    }
-
-    @Override
-    public Properties getSettingsConfig() {
-        return this.settingsConfig;
     }
 
     @Override
@@ -329,5 +286,65 @@ public abstract class AbstractAppCore implements AppCore {
     @Override
     public JsonFormat getJsonFormat() {
         return new JsonFormat(true, true, "  ");
+    }
+
+    @Override
+    public ClassLoader getClassLoader() {
+        return appContext.getClassLoader();
+    }
+
+    @Override
+    public Predicate<String> getMasterPersistenceUnitTest() {
+        return appContext.getMasterPersistenceUnitTest();
+    }
+
+    @Override
+    public Predicate<String> getSlavePersistenceUnitTest() {
+        return appContext.getSlavePersistenceUnitTest();
+    }
+
+    @Override
+    public AppAuthenticationSession getAuthenticationSession() {
+        return appContext.getAuthenticationSession();
+    }
+
+    @Override
+    public PropertiesContext getPropertiesPaths() {
+        return appContext.getPropertiesPaths();
+    }
+
+    @Override
+    public Config getConfig() {
+        return appContext.getConfig();
+    }
+
+    @Override
+    public Properties getSettingsConfig() {
+        return appContext.getSettingsConfig();
+    }
+
+    @Override
+    public JpaContext getJpaContext() {
+        return appContext.getJpaContext();
+    }
+
+    @Override
+    public PendingUpdatesManager getPendingMasterUpdatesManager() {
+        return appContext.getPendingMasterUpdatesManager();
+    }
+
+    @Override
+    public PendingUpdatesManager getPendingSlaveUpdatesManager() {
+        return appContext.getPendingSlaveUpdatesManager();
+    }
+
+    @Override
+    public JpaSync getJpaSync() {
+        return appContext.getJpaSync();
+    }
+
+    @Override
+    public ExpirableCache<Object> getExpirableAttributes() {
+        return appContext.getExpirableAttributes();
     }
 }

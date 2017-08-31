@@ -16,15 +16,37 @@
 
 package com.bc.appcore.actions;
 
+import com.bc.appcore.exceptions.TaskExecutionException;
 import java.util.Map;
-import com.bc.appcore.AppCore;
 import com.bc.appcore.parameter.ParameterException;
+import java.util.Collections;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import com.bc.appcore.AppCore;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Feb 8, 2017 10:54:48 PM
- * @param <O>
+ * @param <O> The type returned by the execute methods
  */
 public interface Action<A extends AppCore, O> {
+    
+    default O executeSilently(A app, O outputIfNone) {
+        return (O)this.executeSilently(app, Collections.EMPTY_MAP, outputIfNone);
+    }
+    
+    default O executeSilently(A app, Map<String, Object> params, O outputIfNone) {
+        try{
+            return this.execute(app, params);
+        }catch(ParameterException | TaskExecutionException e) {
+            Logger.getLogger(Action.class.getName()).log(Level.WARNING, 
+                    "Exception executing instance of " + Action.class.getName(), e);
+            return outputIfNone;
+        }
+    }
+    
+    default O execute(A app) throws ParameterException, TaskExecutionException {
+        return (O)this.execute(app, Collections.EMPTY_MAP);
+    }
     
     O execute(A app, Map<String, Object> params) throws ParameterException, TaskExecutionException;
 }

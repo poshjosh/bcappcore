@@ -14,14 +14,20 @@
  * limitations under the License.
  */
 
-package com.bc.appcore;
+package com.bc.appcore.properties;
+
+import java.util.Map;
 
 /**
- * @author Chinomso Bassey Ikwuagwu on Feb 11, 2017 3:52:50 AM
+ * @author Chinomso Bassey Ikwuagwu on Aug 5, 2017 12:50:37 PM
  */
-public interface UserBase {
+public interface OptionsProvider {
     
-    String getName();
+    OptionsProvider NO_OP = (Map<String, Object> params) -> params;
     
-    boolean isLoggedIn();
+    default Class getType(String name, Object value) {
+        return value == null ? Object.class : value.getClass();
+    }
+
+    Map<String, Object> get(Map<String, Object> params);
 }

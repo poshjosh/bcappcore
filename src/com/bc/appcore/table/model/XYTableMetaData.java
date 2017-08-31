@@ -14,20 +14,32 @@
  * limitations under the License.
  */
 
-package com.bc.appcore;
+package com.bc.appcore.table.model;
 
-import java.io.InputStream;
-import java.net.URL;
-import java.nio.file.Path;
+import com.bc.appcore.jpa.model.ResultModel;
+import com.bc.jpa.search.SearchResults;
+import java.util.List;
 
 /**
- * @author Chinomso Bassey Ikwuagwu on Mar 7, 2017 12:09:39 PM
+ * @author Chinomso Bassey Ikwuagwu on Jun 8, 2017 3:17:56 PM
  */
-public interface ResourceContext {
-    
-    Path getPath(String first, String... more);
+public interface XYTableMetaData<X, Y, Z> {
 
-    URL getResource(String path);
+    ResultModel getResultModel();
+
+    SearchResults getSearchResults();
+
+    XYValues<X, Y, Z> getXyValues();
+
+    List<X> getXValues();
+
+    Class getxEntityType();
+
+    List<Y> getYValues();
+
+    Class getyEntityType();
     
-    InputStream getResourceAsStream(String path);
+    int getRowCount();
+    
+    int getColumnCount();
 }

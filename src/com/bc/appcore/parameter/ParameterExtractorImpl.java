@@ -32,15 +32,28 @@ public class ParameterExtractorImpl implements ParameterExtractor {
     public <T> T getFirstValue(Map<String, Object> params, Class<T> type) 
             throws ParameterException {
         
+        final T value = this.getFirstValue(params, type, null);
+        
+        if(value == null) {
+            throw new ParameterNotFoundException("Parameter with value of type: "+type);
+        }
+        
+        return value;
+    }
+
+    @Override
+    public <T> T getFirstValue(Map<String, Object> params, Class<T> type, T outputIfNone) {
+        
         final IsSubClass isSubClass = new IsSubClass(type);
         
         final Optional optional = params.values().stream().filter((value) -> isSubClass.test(value.getClass())).findFirst();
         
+        final T t;
         if(!optional.isPresent()) {
-            throw new ParameterNotFoundException("Parameter with value of type: "+type);
+            t = outputIfNone;
+        }else{
+            t = (T)optional.get();
         }
-        
-        final T t = (T)optional.get();
         
         return t;
     }
@@ -48,24 +61,48 @@ public class ParameterExtractorImpl implements ParameterExtractor {
     @Override
     public String getFirstKey(Map<String, Object> params, Predicate<String> keyTest) throws ParameterException{
         
-        final Optional<String> optional = params.keySet().stream().filter(keyTest).findFirst();
+        final String value = this.getFirstKey(params, keyTest, null);
         
-        if(!optional.isPresent()) {
+        if(value == null) {
             throw new ParameterNotFoundException();
         }
         
-        return optional.get();
+        return value;
+    }
+
+    @Override
+    public String getFirstKey(Map<String, Object> params, Predicate<String> keyTest, String outputIfNone) {
+        
+        final Optional<String> optional = params.keySet().stream().filter(keyTest).findFirst();
+        
+        if(!optional.isPresent()) {
+            return outputIfNone;
+        }else{
+            return optional.get();
+        }
     }
 
     @Override
     public Object getFirstValue(Map<String, Object> params, Predicate valueTest) throws ParameterException{
         
-        final Optional<String> optional = params.values().stream().filter(valueTest).findFirst();
+        final Object value = this.getFirstValue(params, valueTest, null);
         
-        if(!optional.isPresent()) {
+        if(value == null) {
             throw new ParameterNotFoundException();
         }
         
-        return optional.get();
+        return value;
+    }
+
+    @Override
+    public Object getFirstValue(Map<String, Object> params, Predicate valueTest, Object outputIfNone) {
+        
+        final Optional<String> optional = params.values().stream().filter(valueTest).findFirst();
+        
+        if(!optional.isPresent()) {
+            return outputIfNone;
+        }else{
+            return optional.get();
+        }
     }
 }

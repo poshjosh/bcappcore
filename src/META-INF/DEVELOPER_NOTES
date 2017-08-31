@@ -1,0 +1,33 @@
+
+Read all Properties from ${user.home}/appname/dir1/dir2/abc_xyz.properties
+Read empty Properties from ${user.home}/appname/dir1/dir2/appname_xyz.properties 
+FINDING:  It seems that having one of the dir names in the file name causes 
+the above unexpected result. 
+
+Properties loading logic
+------------------------
+For application with id: 'simplex'
+PRODUCTION MODE Parent/Default (ReadOnly) properties are loaded from:
+app = META-INF/simplex/configs/app.properties 
+logging = META-INF/simplex/configs/logging.properties
+settings = META-INF/simplex/configs/settings.properties
+app auth = META-INF/simplex/configs/auth.properties
+user auth = META-INF/simplex/configs/user_auth_[username].properties
+jpa_jdbc = META-INF/simplex/configs/jpa_jdbc_[persistenceUnitName].properties
+
+DEVELOPMENT MODE Parent/Default (ReadOnly) properties have names as above but suffixed with _devmode
+E.g META-INF/simplex/configs/app.properties becomes META-INF/simplex/configs/app_devmode.properties
+
+Read/Write properties are loaded from the working dir
+e.g ${user.home}/simplex/configs/app.properties
+
+App loading multiple levels of parent/default (ReadOnly) properties
+
+Given an app with id: simplex with depends on library simplex_ui which in turn depends
+on library simplex_core, default (ReadOnly) Properties could be loaded from all 
+libraries if required. 
+
+'simplex_core', 'simplex_ui', 'simplex'
+
+
+

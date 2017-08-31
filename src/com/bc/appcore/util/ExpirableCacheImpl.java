@@ -77,7 +77,12 @@ public class ExpirableCacheImpl<K> extends HashMap<K, Expirable> implements Expi
 
     @Override
     public void close() {
-        com.bc.util.Util.shutdownAndAwaitTermination(this.clearExpiredService, 1, TimeUnit.SECONDS);    
+        try{
+            com.bc.util.Util.shutdownAndAwaitTermination(this.clearExpiredService, 1, TimeUnit.SECONDS);
+        }catch(Exception e) {
+            Logger.getLogger(this.getClass().getName()).log(Level.WARNING, e,
+                    () -> "Encountered exception while shutting down service for clearing expired elements of: "+this.getClass().getName());
+        }
     }
     
     private void init() {

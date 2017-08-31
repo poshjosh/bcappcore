@@ -17,13 +17,9 @@
 package com.bc.appcore;
 
 import com.bc.appcore.actions.Action;
+import com.bc.appcore.actions.ActionQueue;
 import com.bc.appcore.exceptions.TargetNotFoundException;
-import com.bc.config.Config;
-import com.bc.config.ConfigService;
-import com.bc.jpa.JpaContext;
 import com.bc.jpa.dao.Dao;
-import com.bc.jpa.sync.JpaSync;
-import com.bc.jpa.sync.SlaveUpdates;
 import com.bc.appcore.html.HtmlBuilder;
 import com.bc.appcore.parameter.ParametersBuilder;
 import java.text.DateFormat;
@@ -34,16 +30,15 @@ import java.util.TimeZone;
 import javax.persistence.EntityManager;
 import com.bc.appcore.jpa.SearchContext;
 import com.bc.appcore.jpa.model.ResultModel;
-import com.bc.appcore.util.ExpirableCache;
 import com.bc.appcore.util.Settings;
 import com.bc.util.JsonFormat;
-import java.util.Properties;
+import java.util.Comparator;
 import java.util.Set;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Feb 7, 2017 11:10:58 PM
  */
-public interface AppCore extends ObjectFactory {
+public interface AppCore extends AppContext, ObjectFactory {
     
     String getName();
     
@@ -53,23 +48,19 @@ public interface AppCore extends ObjectFactory {
     
     void shutdown();
     
-    SlaveUpdates getSlaveUpdates();
-    
-    JpaSync getJpaSync();
-    
-    Filenames getFilenames();
+    ActionQueue getActionQueue();
     
     Map<String, Object> getAttributes();
-    
-    ExpirableCache<Object> getExpirableAttributes();
     
     <T> T removeExpirable(Class<T> type, Object key) throws TargetNotFoundException;
     
     <T> T getExpirable(Class<T> type, Object key) throws TargetNotFoundException;
     
-    ConfigService getConfigService();
+    User getUser();
     
-    UserBase getUser();
+    Class getUserEntityType();
+    
+    Comparator getEntityOrderComparator();
     
     <T> HtmlBuilder<T> getHtmlBuilder(Class<T> entityType);
     
@@ -81,17 +72,11 @@ public interface AppCore extends ObjectFactory {
     
     <S> ParametersBuilder<S> getParametersBuilder(S source, String actionCommand);
     
-    Config getConfig();
-    
-    Properties getSettingsConfig();
-    
     Settings getSettings();
     
     EntityManager getEntityManager(Class entityType);
     
     Dao getDao(Class entityType);
-    
-    JpaContext getJpaContext();
     
     /**
      * This returns the actual persistence unit names used by the application. And it is

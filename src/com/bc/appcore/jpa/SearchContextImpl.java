@@ -24,11 +24,12 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.persistence.EntityManager;
 import javax.persistence.Query;
-import com.bc.appcore.AppCore;
 import com.bc.appcore.jpa.model.ResultModel;
 import com.bc.jpa.dao.BuilderForSelectImpl;
 import com.bc.jpa.search.QuerySearchResults;
 import java.util.Objects;
+import com.bc.appcore.AppCore;
+import com.bc.jpa.dao.BuilderForSelect;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Feb 20, 2017 8:05:21 PM
@@ -112,7 +113,8 @@ public class SearchContextImpl<T> implements SearchContext<T>  {
     public SelectDao<T> getSelectDao() {
         final Class resultType = this.getResultType();
         Objects.requireNonNull(resultType);
-        return new BuilderForSelectImpl(app.getEntityManager(resultType), resultType);
+        final BuilderForSelect dao = new BuilderForSelectImpl(app.getEntityManager(resultType), resultType);
+        return dao;
     }
     
     @Override

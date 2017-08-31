@@ -22,7 +22,7 @@ import java.io.IOException;
 /**
  * @author Chinomso Bassey Ikwuagwu on Mar 3, 2017 11:03:41 AM
  */
-public class Util {
+public class FileUtil {
     
     public static File[] createFiles(String... pathnames) throws IOException{
         final File [] files = new File[pathnames.length];

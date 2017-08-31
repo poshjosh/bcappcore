@@ -46,13 +46,18 @@ public class InvalidParameterException extends ParameterException {
 
     /**
      * Constructs an instance of <code>InvalidParameterException</code> with the specified detail message.
-     * @param msg the detail message.
+     * @param parameterName The name of the parameter.
      */
-    public InvalidParameterException(String msg) {
-        super(msg);
+    public InvalidParameterException(String parameterName) {
+        super(parameterName);
     }
 
-    public InvalidParameterException(String message, Throwable rootCause) {
-        super(message, rootCause);
+    public InvalidParameterException(String parameterName, Throwable rootCause) {
+        super(parameterName, rootCause);
+    }
+
+    @Override
+    public String getUserMessage() {
+        return "Invalid value for parameter: " + this.getLocalizedMessage();
     }
 }

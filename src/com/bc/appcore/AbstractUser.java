@@ -17,25 +17,56 @@
 package com.bc.appcore;
 
 import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
+import javax.security.auth.login.LoginException;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Mar 9, 2017 2:25:08 AM
  */
-public class UserBaseImpl implements UserBase, Serializable {
+public abstract class AbstractUser implements User, Serializable {
 
-    private final String name;
+    private String name = "";
     
-    private final boolean loggedIn;
-
-    public UserBaseImpl(String name, boolean loggedin) {
-        this.name = name;
-        this.loggedIn = loggedin;
+    private boolean loggedIn = false;
+    
+    public AbstractUser() { }
+    
+    @Override
+    public boolean isAnonymous() {
+        return "".equals(this.name);
+    }
+    
+    @Override
+    public boolean login(String email, String name, char[] pass) throws LoginException {
+     
+        final Map params = new HashMap(8, 0.75f);
+        params.put(com.authsvc.client.parameters.Getuser.ParamName.emailaddress.name(), email);
+        params.put(com.authsvc.client.parameters.Getuser.ParamName.username.name(), name);
+        params.put(com.authsvc.client.parameters.Getuser.ParamName.password.name(), pass);
+        
+        return this.login(params);
     }
 
     @Override
+    public boolean logout() {
+        this.setName("");
+        this.setLoggedIn(false);
+        return !this.loggedIn;
+    }
+    
+    protected void setName(String name) {
+        this.name = name;
+    }
+    
+    @Override
     public String getName() {
         return name;
+    }
+    
+    protected void setLoggedIn(boolean b) {
+        this.loggedIn = b;
     }
 
     @Override
@@ -61,7 +92,7 @@ public class UserBaseImpl implements UserBase, Serializable {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final UserBaseImpl other = (UserBaseImpl) obj;
+        final AbstractUser other = (AbstractUser) obj;
         if (!Objects.equals(this.name, other.name)) {
             return false;
         }

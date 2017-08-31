@@ -16,6 +16,7 @@
 
 package com.bc.appcore.util;
 
+import java.text.DateFormat;
 import java.util.Date;
 import java.util.List;
 
@@ -40,8 +41,9 @@ public interface TextHandler {
 
     boolean isNullOrEmpty(String s);
 
+    TextHandler of(DateFormat dateFormat);
+    
     String removeMultipleSpaces(String str);
 
     String removeSpacesAroundDashes(String str);
-
 }

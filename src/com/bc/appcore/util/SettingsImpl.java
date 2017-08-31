@@ -16,8 +16,12 @@
 
 package com.bc.appcore.util;
 
+import com.bc.appcore.AppCore;
+import com.bc.appcore.actions.Action;
+import com.bc.appcore.functions.CreateActionFromClassName;
+import com.bc.appcore.exceptions.TaskExecutionException;
+import com.bc.appcore.parameter.ParameterException;
 import com.bc.config.Config;
-import com.bc.config.ConfigService;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.Arrays;
@@ -33,6 +37,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Apr 8, 2017 3:02:15 AM
@@ -41,16 +46,20 @@ public class SettingsImpl extends HashMap<String, Object> implements Settings {
 
     private static final Logger logger = Logger.getLogger(SettingsImpl.class.getName());
     
-    private final ConfigService svc;
-
+    private final AppCore app;
+    
     private final Config data;
     
     private final Properties metaData;
     
     private final Map<String, Object> byLabels;
 
-    public SettingsImpl(ConfigService svc, Config data, Properties metaData) {
-        this.svc = Objects.requireNonNull(svc);
+    public SettingsImpl(AppCore app) {
+        this(app, app.getConfig(), app.getSettingsConfig());
+    }
+    
+    public SettingsImpl(AppCore app, Config data, Properties metaData) {
+        this.app = Objects.requireNonNull(app);
         this.data = Objects.requireNonNull(data);
         this.metaData = Objects.requireNonNull(metaData);
         
@@ -59,6 +68,11 @@ public class SettingsImpl extends HashMap<String, Object> implements Settings {
         final Set<String> allNames = data.stringPropertyNames();
         
         logger.log(Level.FINER, "All names: {0}", allNames);
+        
+        this.init(allNames);
+    }
+    
+    private void init(Set<String> allNames) {
         for(String name : allNames) {
             if(this.getAlias(name, null) != null ||
                     this.getLabel(name, null) != null ||
@@ -66,18 +80,22 @@ public class SettingsImpl extends HashMap<String, Object> implements Settings {
                     this.getTypeName(name, null) != null ||
                     !this.getOptions(name).isEmpty()) {
                 
-                final Object value = this.get(name, null);
-                
-                if(logger.isLoggable(Level.FINER)) {
-                    logger.log(Level.FINER, "Adding setting: {0} = {1]", 
-                            new Object[]{name, value});
-                }
-
-                super.put(name, value);
-                
-                this.byLabels.put(this.getLabel(name, name), value);
-            }
+                this.addInit(name);
+            }    
         }
+    }
+    
+    private void addInit(String name) {
+        
+        final List<Action> actionsAreValidatedThus = this.getActions(name);
+        
+        final Object value = this.get(name, null);
+        
+        logger.log(Level.FINER, () -> "Adding setting: " + name + '=' + value);
+
+        super.put(name, value);
+
+        this.byLabels.put(this.getLabel(name, name), value);
     }
 
     @Override
@@ -93,14 +111,9 @@ public class SettingsImpl extends HashMap<String, Object> implements Settings {
      */
     @Override
     public void updateAll(Map<? extends String, ? extends Object> m) throws IOException {
-        
-        final boolean store = false;
-        
         for(Entry<? extends String, ? extends Object> entry : m.entrySet()) {
-            this.update(entry.getKey(), entry.getValue(), false, store);
+            this.update(entry.getKey(), entry.getValue(), false);
         }
-        
-        this.svc.store();
     }
 
     /**
@@ -113,10 +126,10 @@ public class SettingsImpl extends HashMap<String, Object> implements Settings {
      */
     @Override
     public Object update(String name, Object newValue) throws IOException {
-        return this.update(name, newValue, false, true);
+        return this.update(name, newValue, false);
     }
 
-    public Object update(String name, Object newValue, boolean onlyIfAbsent, boolean store) 
+    public Object update(String name, Object newValue, boolean onlyIfAbsent) 
             throws IOException {
         
         if(logger.isLoggable(Level.FINE)) {
@@ -127,19 +140,47 @@ public class SettingsImpl extends HashMap<String, Object> implements Settings {
         
         if(!onlyIfAbsent || oldValue == null) {
             
+            boolean set = false;
+            boolean stored = false;
+            
             this.set(name, newValue);
+            set = true;
 
             try{
 
-                this.svc.store();
+                stored = app.saveConfig();
+                
+                if(stored) {
+                    
+                    final List<Action> actions = this.getActions(name);
 
-                logger.fine("Save successful");
+                    logger.fine(() -> "Setting: " + name + ", has " + actions.size() + " actions.");
 
-            }catch(IOException | RuntimeException e) {
+                    for(Action action : actions) {
+                        
+                        logger.fine(() -> "For setting: " + name + ", executing action: " + action);
 
-                this.set(name, oldValue);
+                        action.execute(app, Collections.singletonMap(name, newValue));
+                    }
 
-                throw e;
+                    logger.fine("Save successful");
+                }else{
+                    if(set) {
+                        this.set(name, oldValue);
+                    }
+                }
+
+            }catch(ParameterException | TaskExecutionException e) {
+
+                if(set) {
+                    this.set(name, oldValue);
+                }
+                
+                if(stored) {
+                    app.saveConfig();
+                }
+
+                throw new RuntimeException(e);
             }
 
             super.put(name, newValue);
@@ -197,11 +238,39 @@ public class SettingsImpl extends HashMap<String, Object> implements Settings {
 
     @Override
     public List<String> getOptions(String name) {
+        
         name = this.getAlias(name, name);
-        final String [] arr = new com.bc.config.ConfigImpl(metaData, null).getArray(name);
+
+        final com.bc.config.Config config = new com.bc.config.ConfigImpl(metaData, null);
+
+        final String [] arr = config.getArray(name+".options");
+
         return arr == null || arr.length == 0 ? Collections.EMPTY_LIST : Arrays.asList(arr);
     }
+    
+    @Override
+    public List<Action> getActions(String name) {
+        
+        name = this.getAlias(name, name);
 
+        final com.bc.config.Config config = new com.bc.config.ConfigImpl(metaData, null);
+
+        final String [] arr = config.getArray(name+".actions");
+        
+        final List<Action> actions;
+
+        if(arr == null || arr.length == 0) {
+            
+            actions = Collections.EMPTY_LIST;
+            
+        }else{
+            
+            actions = Arrays.asList(arr).stream().map(new CreateActionFromClassName()).collect(Collectors.toList());
+        }
+        
+        return actions;
+    }
+    
     public Object get(String name, Object outputIfNone) {
         Object value = outputIfNone;
         final Class type = this.getValueType(name, null);

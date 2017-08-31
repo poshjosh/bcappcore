@@ -16,11 +16,13 @@
 
 package com.bc.appcore.util;
 
+import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -29,18 +31,9 @@ import java.util.regex.Pattern;
  */
 public class TextHandlerImpl implements TextHandler {
     
-    private final SimpleDateFormat dateFormat = new SimpleDateFormat();
+    private final SimpleDateFormat dateFormat;
     
-    private final String [] dateFormatPatterns = {
-        "dd MMM yy",   "dd MMM, yy",   "MMM dd yy",   "MMM dd, yy",   "dd MM yy",   "dd MM, yy",
-        "dd MMM yyyy", "dd MMM, yyyy", "MMM dd yyyy", "MMM dd, yyyy", "dd MM yyyy", "dd MM, yyyy",
-        
-        "dd-MMM-yy",   "dd-MMM, yy",   "MMM-dd-yy",   "MMM-dd, yy",   "dd-MM-yy",   "dd-MM, yy",
-        "dd-MMM-yyyy", "dd-MMM, yyyy", "MMM-dd-yyyy", "MMM-dd, yyyy", "dd-MM-yyyy", "dd-MM, yyyy",
-        
-        "dd/MMM/yy",   "dd/MMM, yy",   "MMM/dd/yy",   "MMM/dd, yy",   "dd/MM/yy",   "dd/MM, yy",
-        "dd/MMM/yyyy", "dd/MMM, yyyy", "MMM/dd/yyyy", "MMM/dd, yyyy", "dd/MM/yyyy", "dd/MM, yyyy",
-    };
+    private final String [] dateFormatPatterns;
     
     private final String months = "jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec";
     
@@ -54,7 +47,41 @@ public class TextHandlerImpl implements TextHandler {
     
     private final Pattern punctPattern = Pattern.compile("\\p{Punct}");
     
-    public TextHandlerImpl() { }
+    public TextHandlerImpl() { 
+        this(new SimpleDateFormat());
+    }
+    
+    public TextHandlerImpl(SimpleDateFormat simpleDateFormat) { 
+        this(simpleDateFormat, new String[]{
+                "dd MMM yy",   "dd MMM, yy",   "MMM dd yy",   "MMM dd, yy",   "dd MM yy",   "dd MM, yy",
+                "dd MMM yyyy", "dd MMM, yyyy", "MMM dd yyyy", "MMM dd, yyyy", "dd MM yyyy", "dd MM, yyyy",
+
+                "dd-MMM-yy",   "dd-MMM, yy",   "MMM-dd-yy",   "MMM-dd, yy",   "dd-MM-yy",   "dd-MM, yy",
+                "dd-MMM-yyyy", "dd-MMM, yyyy", "MMM-dd-yyyy", "MMM-dd, yyyy", "dd-MM-yyyy", "dd-MM, yyyy",
+
+                "dd/MMM/yy",   "dd/MMM, yy",   "MMM/dd/yy",   "MMM/dd, yy",   "dd/MM/yy",   "dd/MM, yy",
+                "dd/MMM/yyyy", "dd/MMM, yyyy", "MMM/dd/yyyy", "MMM/dd, yyyy", "dd/MM/yyyy", "dd/MM, yyyy",
+            }
+        );
+    }
+
+    public TextHandlerImpl(SimpleDateFormat dateFormat, String [] dateFormatPatterns) { 
+        this.dateFormat = Objects.requireNonNull(dateFormat);
+        this.dateFormatPatterns = Objects.requireNonNull(dateFormatPatterns);
+    }
+    
+    @Override
+    public TextHandler of(DateFormat dateFormat) {
+        return new TextHandlerImpl((SimpleDateFormat)dateFormat);
+    }
+    
+    public TextHandler of(SimpleDateFormat dateFormat) {
+        return new TextHandlerImpl(dateFormat);
+    }
+    
+    public TextHandler of(SimpleDateFormat dateFormat, String [] dateFormatPatterns) {
+        return new TextHandlerImpl(dateFormat, dateFormatPatterns);
+    }
     
 //    public static void main(String [] args) {
 //        TextHandlerImpl th = new TextHandlerImpl();

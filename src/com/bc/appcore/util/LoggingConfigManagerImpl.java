@@ -16,105 +16,94 @@
 
 package com.bc.appcore.util;
 
-import com.bc.appcore.ResourceContext;
-import java.io.BufferedReader;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.Writer;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.LogManager;
-import java.util.logging.Logger;
+import static jxl.biff.FormatRecord.logger;
 
 /**
- * @author Chinomso Bassey Ikwuagwu on Mar 9, 2017 12:27:04 PM
+ * @author Chinomso Bassey Ikwuagwu on Aug 20, 2017 7:14:29 PM
  */
 public class LoggingConfigManagerImpl implements LoggingConfigManager {
 
-    private transient static final Logger logger = Logger.getLogger(
-            LoggingConfigManagerImpl.class.getName());
-    
-    private final ResourceContext resourceContext;
-    
     private final List<String> readOnly = Arrays.asList(new String[]{
         "java", "javax", "sun", "com.sun", "com.mysql", "org"
     });
     
-    public LoggingConfigManagerImpl(ResourceContext resourceContext) {
-        this.resourceContext = resourceContext;
-    }
     
-    @Override
-    public void init(String source, String target, Level level) 
-            throws URISyntaxException, IOException {
-        
-        final Path loggingConfigPath = resourceContext.getPath(target);
-        
-        logger.log(Level.INFO, "Copying: {0}, to: {1}", new Object[]{source, target});
-
-        final StringBuilder contents = this.getContents(source);
-        Files.write(loggingConfigPath, contents.toString().getBytes(), 
-                StandardOpenOption.CREATE, 
-                StandardOpenOption.TRUNCATE_EXISTING, 
-                StandardOpenOption.WRITE);
-        
-        this.read(target, level);
-    }
-    
-    @Override
-    public void read(String resourcePath, Level level) throws URISyntaxException, IOException {
-        
-        if(level != null) {
-            this.updateLevel(resourcePath, level);
+    private class IsLevelProperty implements Predicate<String> {
+        public IsLevelProperty() { }
+        @Override
+        public boolean test(String toTest) {
+            return toTest.endsWith(".level");
         }
+    }
+    
+    private class IsReadOnlyProperty implements Predicate<String> {
+        public IsReadOnlyProperty() { }
+        @Override
+        public boolean test(String toTest) {
+            for(String s : readOnly) {
+                if(toTest.startsWith(s)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+    
+    private final String charsetName;
+
+    public LoggingConfigManagerImpl() {
+        this("utf-8");
+    }
+    
+    public LoggingConfigManagerImpl(String charsetName) {
+        this.charsetName = Objects.requireNonNull(charsetName);
+    }
+
+    @Override
+    public void read(String loggingConfigPath) throws IOException {
         
         final String loggingFilePropertyName = "java.util.logging.config.file";
         
-        logger.log(Level.FINE, "{0} = {1}", new Object[]{loggingFilePropertyName, System.getProperty(loggingFilePropertyName)});
+        logger.fine(() ->  loggingFilePropertyName + " = " + System.getProperty(loggingFilePropertyName));
         
-        final Path path = this.getResourcePath(resourcePath, null);
-        System.setProperty(loggingFilePropertyName, path==null?resourcePath:path.toString());
+        System.setProperty(loggingFilePropertyName, loggingConfigPath);
         
-        logger.log(Level.FINER, "Reading logging config file: {0}", resourcePath);
+        logger.log(Level.FINER, "Reading logging config file: {0}", loggingConfigPath);
             
-        try(InputStream in = this.getInputStream(resourcePath)) {
+        try(InputStream in = new FileInputStream(loggingConfigPath)) {
             
             logger.log(Level.FINER, "Input stream: {0}", in);
             
             LogManager.getLogManager().readConfiguration(in);
         }
         
-        logger.log(Level.INFO, "Read {0} from {1}", new Object[]{loggingFilePropertyName, resourcePath});
+        logger.log(Level.INFO, "Read {0} from {1}", new Object[]{loggingFilePropertyName, loggingConfigPath});
     }
     
     @Override
-    public Path getLogsDir(String resourcePath, Path outputIfNone) throws IOException {
+    public Path getLogsDir(String loggingConfigPath, Path outputIfNone) throws IOException {
     
         final Path output;
         
-        final Properties props = this.getProperties(resourcePath);
+        final Properties props = this.getProperties(loggingConfigPath);
         
         final String pattern = props.getProperty("java.util.logging.FileHandler.pattern");
         
@@ -140,9 +129,12 @@ public class LoggingConfigManagerImpl implements LoggingConfigManager {
     }
     
     @Override
-    public void updateLevel(String resourcePath, Level level) throws IOException {
+    public void updateLevel(String loggingConfigPath, Level level) throws IOException {
         
-        final Properties props = this.getProperties(resourcePath);
+        Objects.requireNonNull(loggingConfigPath);
+        Objects.requireNonNull(level);
+        
+        final Properties props = this.getProperties(loggingConfigPath);
 
         final StringBuilder comments = new StringBuilder();
         comments.append(new Date()).append(' ');
@@ -150,21 +142,8 @@ public class LoggingConfigManagerImpl implements LoggingConfigManager {
         comments.append(" updated: ");
 
         final String update = level.getName();
-        final Predicate<String> predicate = new Predicate<String>() {
-            @Override
-            public boolean test(String toTest) {
-                if(toTest.endsWith(".level")) {
-                    for(String s : readOnly) {
-                        if(toTest.startsWith(s)) {
-                            return false;
-                        }
-                    }
-                    return true;
-                }else{
-                    return false;
-                }
-            }
-        };
+        
+        final Predicate<String> predicate = new IsLevelProperty().and(new IsReadOnlyProperty().negate());
         
         for(String name : props.stringPropertyNames()) {
             if(predicate.test(name)) {
@@ -173,95 +152,20 @@ public class LoggingConfigManagerImpl implements LoggingConfigManager {
             }
         }
         
-        try(Writer writer = new OutputStreamWriter(this.getOutputStream(resourcePath, false))) {
+        try(Writer writer = new OutputStreamWriter(new FileOutputStream(loggingConfigPath, false), charsetName)) {
             props.store(writer, comments.toString());
         }
     }
-    
-    public Properties getProperties(String resourcePath) throws IOException {
+
+    @Override
+    public Properties getProperties(String path) throws IOException {
         
         final Properties props = new Properties();
-
-        try(Reader reader = new InputStreamReader(this.getInputStream(resourcePath))) {
+        
+        try(Reader reader = new InputStreamReader(new FileInputStream(path), charsetName)) {
             props.load(reader);
         }
 
         return props;
-    }
-    
-    public StringBuilder getContents(String resourcePath) throws IOException {
-        try(BufferedReader br = new BufferedReader(new InputStreamReader(this.getInputStream(resourcePath)))) {
-            final String nl = System.getProperty("line.separator");
-            StringBuilder builder = new StringBuilder();
-            String line;
-            while((line = br.readLine()) != null) {
-                builder.append(line).append(nl);
-            }
-            return builder;
-        }
-    }
-    
-    public InputStream getInputStream(String path) throws FileNotFoundException {
-        InputStream in = resourceContext.getResourceAsStream(path);
-        if(in == null) {
-            in = new FileInputStream(path);
-        }
-        logger.log(Level.FINER, "InputStream: {0}", in);
-        return in;
-    }
-    
-    public OutputStream getOutputStream(String path, boolean append) throws FileNotFoundException {
-        OutputStream out;
-        try {
-            out = new FileOutputStream(path, append);
-        } catch (FileNotFoundException e) {
-            try {
-                Path resPath = this.getResourcePath(path, null);
-                if(resPath == null) {
-                    out = null;
-                }else{
-                    out = new FileOutputStream(resPath.toString(), false);
-                }
-            } catch (URISyntaxException use) {
-                throw e;
-            }
-        }
-        return out;
-    }
-
-    public Path getResourcePath(String path, Path outputIfNone) throws URISyntaxException {
-        
-        final URL url = resourceContext.getResource(path);
-        
-        logger.log(Level.FINE, "Resolved resource: {0} to URL: {1}", new Object[]{path, url});
-        
-        return url == null ? Paths.get(path) : this.getPath(url.toURI(), outputIfNone);
-    }
-    
-    public Path getPath(URI uri, Path outputIfNone) {
-        Path output;
-        try{
-            output = Paths.get(uri);
-        }catch(java.nio.file.FileSystemNotFoundException fsnfe) {
-            
-            logger.log(Level.WARNING, "For URI: "+uri, fsnfe);
-            
-            final Map<String, String> env = Collections.singletonMap("create", "true");
-            
-            try(FileSystem fileSystem = FileSystems.newFileSystem(uri, env)) {
-                
-                output = Paths.get(uri);
-                    
-            }catch(IOException ioe) {
-                
-                logger.log(Level.WARNING, "Exception creating FileSystem for: "+uri, ioe);
-                
-                output = outputIfNone;
-            }
-        }
-        
-        logger.log(Level.FINE, "Resolved URI: {0} to Path: {1}", new Object[]{uri, output});
-        
-        return output;
     }
 }

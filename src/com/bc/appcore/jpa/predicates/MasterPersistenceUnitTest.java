@@ -24,8 +24,10 @@ import java.util.function.Predicate;
  */
 public class MasterPersistenceUnitTest implements Predicate<String>, Serializable {
 
+    public MasterPersistenceUnitTest() { }
+
     @Override
     public boolean test(String persistenceUnitName) {
-        return persistenceUnitName.contains("master");
+        return !persistenceUnitName.contains("slave");
     }
 }

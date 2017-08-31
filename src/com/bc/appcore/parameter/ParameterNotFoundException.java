@@ -46,13 +46,18 @@ public class ParameterNotFoundException extends ParameterException {
 
     /**
      * Constructs an instance of <code>ParameterNotFoundException</code> with the specified detail message.
-     * @param msg the detail message.
+     * @param parameterName the detail message.
      */
-    public ParameterNotFoundException(String msg) {
-        super(msg);
+    public ParameterNotFoundException(String parameterName) {
+        super(parameterName);
     }
 
-    public ParameterNotFoundException(String message, Throwable rootCause) {
-        super(message, rootCause);
+    public ParameterNotFoundException(String parameterName, Throwable rootCause) {
+        super(parameterName, rootCause);
+    }
+
+    @Override
+    public String getUserMessage() {
+        return "Value not found for parameter: " + this.getLocalizedMessage();
     }
 }
