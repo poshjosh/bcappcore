@@ -26,5 +26,6 @@ public interface Names {
     String PENDING_UPDATES_DIR = "pending_updates";
     String REPORT_BACKUP_DIR = "backup";
     
-    String PENDING_SLAVE_UPDATES_FILE_NAME = "";
+    String PENDING_MASTER_UPDATES_FILE_NAME = "master_updates.pending";
+    String PENDING_SLAVE_UPDATES_FILE_NAME = "slave_updates.pending";
 }
