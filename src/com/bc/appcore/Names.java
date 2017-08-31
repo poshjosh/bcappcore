@@ -19,7 +19,7 @@ package com.bc.appcore;
 /**
  * @author Chinomso Bassey Ikwuagwu on Aug 31, 2017 8:27:43 PM
  */
-public interface FileNames {
+public interface Names {
     
     String CONFIGS_DIR = "configs";
     String LOGS_DIR = "logs";

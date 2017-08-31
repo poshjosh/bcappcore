@@ -240,10 +240,10 @@ public class AppLauncherCore<A extends AppCore> {
             
             if(dirsToCreate == null) {
                 dirsToCreate = new String[]{
-                        Paths.get(workingDirPath, FileNames.CONFIGS_DIR).toString(),
-                        Paths.get(workingDirPath, FileNames.LOGS_DIR).toString(),
-                        Paths.get(workingDirPath, FileNames.PENDING_UPDATES_DIR).toString(),
-                        Paths.get(workingDirPath, FileNames.REPORT_BACKUP_DIR).toString()
+                        Paths.get(workingDirPath, Names.CONFIGS_DIR).toString(),
+                        Paths.get(workingDirPath, Names.LOGS_DIR).toString(),
+                        Paths.get(workingDirPath, Names.PENDING_UPDATES_DIR).toString(),
+                        Paths.get(workingDirPath, Names.REPORT_BACKUP_DIR).toString()
                 };
             }
             logger.fine(() -> "Dirs to create: " + (Arrays.toString(dirsToCreate).replace(',', '\n')));
@@ -491,7 +491,7 @@ public class AppLauncherCore<A extends AppCore> {
     protected PendingUpdatesManager createPendingSlaveUpdatesManager(JpaContext jpaContext) {
         return !enableSync ? PendingUpdatesManager.NO_OP :
                 new PendingUpdatesManagerImpl(
-                        this.getPendingUpdatesFilePath(FileNames.PENDING_SLAVE_UPDATES_FILE_NAME).toFile(),
+                        this.getPendingUpdatesFilePath(Names.PENDING_SLAVE_UPDATES_FILE_NAME).toFile(),
                         new UpdaterImpl(jpaContext, this.masterPersistenceUnitTest, this.slavePersistenceUnitTest),
                         new PersistenceCommunicationsLinkFailureTest());
     }
@@ -566,7 +566,7 @@ public class AppLauncherCore<A extends AppCore> {
     }
     
     protected Path getPendingUpdatesFilePath(String fname) {
-        return Paths.get(this.propertiesContext.getWorkingDirPath(), FileNames.PENDING_UPDATES_DIR, fname);
+        return Paths.get(this.propertiesContext.getWorkingDirPath(), Names.PENDING_UPDATES_DIR, fname);
     }
     
     protected Set<Path> getPropertiesPaths(List<PropertiesContext> pathList, String typeName) {

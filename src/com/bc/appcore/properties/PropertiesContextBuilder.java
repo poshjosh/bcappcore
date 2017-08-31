@@ -16,7 +16,6 @@
 
 package com.bc.appcore.properties;
 
-import com.bc.appcore.FileNames;
 import com.bc.appcore.functions.GetInputStreamsForPath;
 import com.bc.appcore.functions.GetOutputStreamsForPath;
 import java.io.IOException;
@@ -28,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import com.bc.appcore.Names;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Aug 23, 2017 8:28:05 PM
@@ -54,7 +54,7 @@ public class PropertiesContextBuilder {
     
     public PropertiesContextBuilder() {
         this.classLoader = Thread.currentThread().getContextClassLoader();
-        this.dirName = FileNames.CONFIGS_DIR;
+        this.dirName = Names.CONFIGS_DIR;
         this.typePrefixes = new HashMap<>();
         this.typeFileNames = new HashMap<>();
         this.typeSuffixes = new HashMap<>();
