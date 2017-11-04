@@ -21,12 +21,10 @@ import com.bc.appcore.jpa.predicates.MasterPersistenceUnitTest;
 import com.bc.appcore.jpa.predicates.SlavePersistenceUnitTest;
 import com.bc.appcore.util.ExpirableCache;
 import com.bc.config.Config;
-import com.bc.jpa.JpaContext;
-import com.bc.jpa.sync.JpaSync;
 import java.util.Properties;
 import java.util.function.Predicate;
-import com.bc.jpa.sync.PendingUpdatesManager;
 import com.bc.appcore.properties.PropertiesContext;
+import com.bc.jpa.context.PersistenceContext;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -52,15 +50,17 @@ public interface AppContext {
         return new SlavePersistenceUnitTest();
     }
     
+    boolean isSyncEnabled();
+    
     ClassLoader getClassLoader();
     
     AppAuthenticationSession getAuthenticationSession();
     
     default String getWorkingDir() {
-        return this.getPropertiesPaths().getWorkingDirPath();
+        return this.getPropertiesContext().getWorkingDirPath();
     }
     
-    PropertiesContext getPropertiesPaths();
+    PropertiesContext getPropertiesContext();
     
     Config getConfig();
     
@@ -68,28 +68,21 @@ public interface AppContext {
         final String typeName = PropertiesContext.TypeName.APP;
         try{
             final String charsetName = this.getConfig().getString("charserName", "utf-8");
-            final OutputStream out = this.getPropertiesPaths().getOutputStream(typeName, false);
+            final OutputStream out = this.getPropertiesContext().getOutputStream(typeName, false);
             try(Writer writer  = new OutputStreamWriter(out, charsetName)) {
                 final String comment = "Stored by: "+System.getProperty("user.name")+" on "+new Date();
                 this.getConfig().getProperties().store(writer, comment);
             }
             return true;
         }catch(IOException e) {
-            Logger.getLogger(this.getClass().getName()).log(
-                    Level.WARNING, "For: "+this.getPropertiesPaths().get(typeName), e);
+            Logger.getLogger(this.getClass().getName()).log(Level.WARNING, "For: "+this.getPropertiesContext().get(typeName), e);
             return false;
         }
     }
     
     Properties getSettingsConfig();
     
-    JpaContext getJpaContext();
-    
-    PendingUpdatesManager getPendingMasterUpdatesManager();
-    
-    PendingUpdatesManager getPendingSlaveUpdatesManager();
-    
-    JpaSync getJpaSync();
+    PersistenceContext getPersistenceContext();
     
     ExpirableCache<Object> getExpirableAttributes();
 }    

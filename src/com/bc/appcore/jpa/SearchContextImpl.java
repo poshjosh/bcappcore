@@ -24,17 +24,23 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.persistence.EntityManager;
 import javax.persistence.Query;
-import com.bc.appcore.jpa.model.ResultModel;
-import com.bc.jpa.dao.BuilderForSelectImpl;
+import com.bc.jpa.dao.SelectImpl;
 import com.bc.jpa.search.QuerySearchResults;
 import java.util.Objects;
 import com.bc.appcore.AppCore;
-import com.bc.jpa.dao.BuilderForSelect;
+import com.bc.appcore.jpa.model.EntityResultModel;
+import com.bc.jpa.search.ListSearchResults;
+import java.io.Serializable;
+import java.util.List;
+import java.util.function.Function;
+import com.bc.jpa.dao.Select;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Feb 20, 2017 8:05:21 PM
  */
-public class SearchContextImpl<T> implements SearchContext<T>  {
+public class SearchContextImpl<T> implements SearchContext<T>, Serializable {
+
+    private transient static final Logger logger = Logger.getLogger(SearchContextImpl.class.getName());
     
     private static class AutoCloseableQuerySearchResults 
             extends QuerySearchResults implements AutoCloseable {
@@ -53,13 +59,13 @@ public class SearchContextImpl<T> implements SearchContext<T>  {
 
     private final AppCore app;
     
-    private final ResultModel<T> resultModel;
+    private final EntityResultModel<T> resultModel;
     
     private final int pageSize;
     
     private final boolean useCache;
 
-    public SearchContextImpl(AppCore app, ResultModel<T> resultModel, int pageSize, boolean useCache) {
+    public SearchContextImpl(AppCore app, EntityResultModel<T> resultModel, int pageSize, boolean useCache) {
         this.app = Objects.requireNonNull(app);
         this.resultModel = Objects.requireNonNull(resultModel);
         this.pageSize = pageSize;
@@ -90,20 +96,23 @@ public class SearchContextImpl<T> implements SearchContext<T>  {
     }
 
     @Override
-    public ResultModel<T> getResultModel() {
+    public EntityResultModel<T> getResultModel() {
         return resultModel;
     }
 
     @Override
-    public SearchResults<T> getSearchResults() {
-        return this.getSearchResults(this.getSelectDao());
+    public SearchResults<T> searchAll(String textToFind, Function<Query, Query> queryFormatter) {
+        final List<T> found = app.getActivePersistenceUnitContext().getTextSearch().search(
+                this.getResultType(), textToFind, queryFormatter);
+        return new ListSearchResults(found, this.pageSize, this.useCache);
     }
     
     @Override
-    public SearchResults<T> getSearchResults(String sql) {
+    public SearchResults<T> executeNativeQuery(String sql, Function<Query, Query> queryFormatter) {
         final Class<T> resultType = this.getResultType();
-        final EntityManager em = app.getEntityManager(resultType);
-        final Query query = resultType == null ? em.createNativeQuery(sql) : em.createNativeQuery(sql, resultType); 
+        final EntityManager em = app.getActivePersistenceUnitContext().getEntityManager();
+        final Query query = resultType == null ? em.createNativeQuery(sql) : em.createNativeQuery(sql, resultType);
+        queryFormatter.apply(query);
         final SearchResults searchResults = new AutoCloseableQuerySearchResults(
                 em, query, this.pageSize, this.useCache);
         return searchResults;
@@ -113,12 +122,28 @@ public class SearchContextImpl<T> implements SearchContext<T>  {
     public SelectDao<T> getSelectDao() {
         final Class resultType = this.getResultType();
         Objects.requireNonNull(resultType);
-        final BuilderForSelect dao = new BuilderForSelectImpl(app.getEntityManager(resultType), resultType);
+        final Select dao = new SelectImpl(app.getActivePersistenceUnitContext().getEntityManager(), resultType);
         return dao;
     }
     
     @Override
-    public SearchResults<T> getSearchResults(SelectDao<T> dao) {
-        return new BaseSearchResults(dao, this.pageSize, this.useCache);
+    public SearchResults<T> getSearchResults(SelectDao<T> dao, 
+            Function<Query, Query> queryFormatter) {
+        final BaseSearchResults searchResults = new BaseSearchResults(dao, this.pageSize, this.useCache);
+        logger.log(Level.FINE, "Formatting Query with: {0}", queryFormatter);
+        queryFormatter.apply(searchResults.getQuery());
+        return searchResults;
+    }
+
+    public AppCore getApp() {
+        return app;
+    }
+
+    public int getPageSize() {
+        return pageSize;
+    }
+
+    public boolean isUseCache() {
+        return useCache;
     }
 }

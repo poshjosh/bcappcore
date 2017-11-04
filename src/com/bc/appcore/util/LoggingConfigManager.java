@@ -31,6 +31,6 @@ public interface LoggingConfigManager {
     Properties getProperties(String path) throws IOException;
 
     void read(String loggingConfigPath) throws IOException;
-
+        
     void updateLevel(String loggingConfigPath, Level level) throws IOException;
 }

@@ -17,17 +17,17 @@
 package com.bc.appcore.table.model;
 
 import com.bc.appcore.jpa.model.ColumnLabelProvider;
-import com.bc.appcore.jpa.model.ResultModel;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import javax.swing.table.TableModel;
+import com.bc.appcore.jpa.model.EntityResultModel;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on May 21, 2017 12:05:39 AM
  */
-public class TableModelResultModel<T> implements ResultModel<T> {
+public class TableModelResultModel<T> implements EntityResultModel<T> {
 
     private final TableModel tableModel;
     
@@ -60,6 +60,16 @@ public class TableModelResultModel<T> implements ResultModel<T> {
     }
 
     @Override
+    public int update() {
+        return 0;
+    }
+
+    @Override
+    public boolean isPendingUpdate(int row, int column) {
+        return false;
+    }
+
+    @Override
     public Class<T> getEntityType() {
         return entityType;
     }
@@ -75,20 +85,7 @@ public class TableModelResultModel<T> implements ResultModel<T> {
     }
 
     @Override
-    public Object get(T entity, int rowIndex, String columnName) {
-        return this.get(entity, rowIndex, this.columnNames.indexOf(columnName));
-    }
-
-    @Override
     public Object set(T entity, int rowIndex, int columnIndex, Object value) {
-        final Object oldValue = this.get(entity, rowIndex, columnIndex);
-        this.tableModel.setValueAt(value, rowIndex, columnIndex);
-        return oldValue;
-    }
-
-    @Override
-    public Object set(T entity, int rowIndex, String columnName, Object value) {
-        final int columnIndex = this.columnNames.indexOf(columnName);
         final Object oldValue = this.get(entity, rowIndex, columnIndex);
         this.tableModel.setValueAt(value, rowIndex, columnIndex);
         return oldValue;

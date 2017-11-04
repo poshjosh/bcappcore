@@ -14,16 +14,14 @@
  * limitations under the License.
  */
 
-package com.bc.appcore.predicates;
-
-import java.util.function.Predicate;
+package com.bc.appcore;
 
 /**
- * @author Chinomso Bassey Ikwuagwu on Mar 10, 2017 5:22:12 PM
+ * @author Chinomso Bassey Ikwuagwu on Oct 12, 2017 11:41:48 AM
  */
-public class AcceptAll<T> implements Predicate<T> {
-    @Override
-    public boolean test(T t) {
-        return true;
-    }
+public interface ResultHandler<R> {
+
+    void handleSuccess(R result);
+    
+    void handleException(Exception e);
 }

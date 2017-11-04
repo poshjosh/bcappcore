@@ -17,7 +17,6 @@
 package com.bc.appcore.util;
 
 import com.bc.appcore.jpa.predicates.GenericReturnTypeArgumentIsEntityType;
-import com.bc.appcore.predicates.AcceptAll;
 import com.bc.appcore.predicates.IsSubClass;
 import com.bc.appcore.predicates.MethodHasGenericReturnType;
 import com.bc.appcore.predicates.MethodHasParameterType;
@@ -509,7 +508,7 @@ public class RelationAccessImpl implements RelationAccess {
     @Override
     public Set<Class> getChildTypes(Class entityType, Predicate<Class> acceptTypeTest) {
         
-        return this.getChildTypes(entityType, false, acceptTypeTest, new AcceptAll().negate(), false);
+        return this.getChildTypes(entityType, false, acceptTypeTest, (cls) -> false, false);
     }
     
     @Override

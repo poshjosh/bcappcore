@@ -23,6 +23,8 @@ import java.util.Collections;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import com.bc.appcore.AppCore;
+import java.util.Objects;
+import java.util.Optional;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Feb 8, 2017 10:54:48 PM
@@ -30,18 +32,20 @@ import com.bc.appcore.AppCore;
  */
 public interface Action<A extends AppCore, O> {
     
-    default O executeSilently(A app, O outputIfNone) {
-        return (O)this.executeSilently(app, Collections.EMPTY_MAP, outputIfNone);
+    default Optional<O> executeSilently(A app) {
+        return this.executeSilently(app, Collections.EMPTY_MAP);
     }
     
-    default O executeSilently(A app, Map<String, Object> params, O outputIfNone) {
+    default Optional<O> executeSilently(A app, Map<String, Object> params) {
+        O output;
         try{
-            return this.execute(app, params);
+            output = this.execute(app, Objects.requireNonNull(params));
         }catch(ParameterException | TaskExecutionException e) {
             Logger.getLogger(Action.class.getName()).log(Level.WARNING, 
-                    "Exception executing instance of " + Action.class.getName(), e);
-            return outputIfNone;
+                    "Exception executing instance of " + this.getClass().getName(), e);
+            output = null;
         }
+        return Optional.ofNullable(output);
     }
     
     default O execute(A app) throws ParameterException, TaskExecutionException {

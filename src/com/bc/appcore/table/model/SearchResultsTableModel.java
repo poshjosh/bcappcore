@@ -16,18 +16,18 @@
 
 package com.bc.appcore.table.model;
 
-import com.bc.appcore.jpa.model.ResultModel;
 import com.bc.jpa.search.SearchResults;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import com.bc.appcore.jpa.model.EntityResultModel;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Feb 14, 2017 8:13:17 PM
  */
-public class SearchResultsTableModel<T> extends EntityTableModel {
+public class SearchResultsTableModel<T> extends EntityTableModelImpl {
     
     private transient final Logger logger = Logger.getLogger(SearchResultsTableModel.class.getName());
     
@@ -35,17 +35,17 @@ public class SearchResultsTableModel<T> extends EntityTableModel {
     
     private final SearchResults<T> searchResults;
 
-    public SearchResultsTableModel(SearchResults<T> searchResults, ResultModel<T> resultModel) {
+    public SearchResultsTableModel(SearchResults<T> searchResults, EntityResultModel<T> resultModel) {
         this(searchResults, resultModel, 0, searchResults.getPageCount());
     }
     
     public SearchResultsTableModel(SearchResults<T> searchResults, 
-            ResultModel<T> resultModel, int pageNum) {
+            EntityResultModel<T> resultModel, int pageNum) {
         this(searchResults, resultModel, pageNum, 1);
     }
     
     public SearchResultsTableModel(SearchResults<T> searchResults, 
-            ResultModel<T> resultModel, int firstPage, int numberOfPages) {
+            EntityResultModel<T> resultModel, int firstPage, int numberOfPages) {
         super(getResultsToDisplay(searchResults, firstPage, numberOfPages), resultModel);
         this.serialColumnIndex = resultModel.getSerialColumnIndex();
         this.searchResults = searchResults;

@@ -4,6 +4,10 @@ Read empty Properties from ${user.home}/appname/dir1/dir2/appname_xyz.properties
 FINDING:  It seems that having one of the dir names in the file name causes 
 the above unexpected result. 
 
+Location of derby database
+---------------------------
+Location of derby database: derby.system.home is set to workingdir/derby_db
+
 Properties loading logic
 ------------------------
 For application with id: 'simplex'

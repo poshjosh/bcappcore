@@ -46,6 +46,7 @@ public class ColumnLabelProviderImpl implements ColumnLabelProvider {
     
     @Override
     public String getColumnLabel(Class entityType, String columnName) {
+        Objects.requireNonNull(entityType);
         return this.getColumnLabel(Collections.singleton(entityType), columnName);
     }
     
@@ -56,6 +57,8 @@ public class ColumnLabelProviderImpl implements ColumnLabelProvider {
     }
 
     public String getColumnLabel(Collection<Class> entityTypes, String columnName) {
+//System.out.println("==================================================="+this.getClass());        
+//System.out.println("Entity types: "+entityTypes+", columnName: "+columnName);        
         String label = null;
         for(Class type : entityTypes) {
             label = config.getString(propertyPrefix + '.' + type.getName() + '.' + columnName, null);

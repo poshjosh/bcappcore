@@ -19,12 +19,10 @@ package com.bc.appcore;
 import com.authsvc.client.AppAuthenticationSession;
 import com.bc.appcore.util.ExpirableCache;
 import com.bc.config.Config;
-import com.bc.jpa.JpaContext;
-import com.bc.jpa.sync.JpaSync;
 import java.util.Objects;
 import java.util.Properties;
-import com.bc.jpa.sync.PendingUpdatesManager;
 import com.bc.appcore.properties.PropertiesContext;
+import com.bc.jpa.context.PersistenceContext;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Aug 1, 2017 6:15:37 PM
@@ -35,10 +33,8 @@ public class AppContextBuilder implements AppContext {
     private PropertiesContext propertiesPaths;
     private Config config;
     private Properties settingsConfig;
-    private JpaContext jpaContext;
-    private PendingUpdatesManager pendingMasterUpdatesManager;
-    private PendingUpdatesManager pendingSlaveUpdatesManager;
-    private JpaSync jpaSync;
+    private PersistenceContext persistenceContext;
+    private boolean syncEnabled;
     private ExpirableCache<Object> expirableAttributes;
     private AppAuthenticationSession authenticationSession;
 
@@ -48,7 +44,7 @@ public class AppContextBuilder implements AppContext {
     
     public AppContext build() {
         
-        this.requireBuildNotYetAttempted("build() method has ");
+        this.requireBuildNotYetAttempted("build() method may only be called once");
 
         this.buildAttempted = true;
         
@@ -66,7 +62,7 @@ public class AppContextBuilder implements AppContext {
     }
     
     @Override
-    public PropertiesContext getPropertiesPaths() {
+    public PropertiesContext getPropertiesContext() {
         return propertiesPaths;
     }
 
@@ -81,23 +77,13 @@ public class AppContextBuilder implements AppContext {
     }
 
     @Override
-    public JpaContext getJpaContext() {
-        return jpaContext;
+    public PersistenceContext getPersistenceContext() {
+        return persistenceContext;
     }
 
     @Override
-    public PendingUpdatesManager getPendingMasterUpdatesManager() {
-        return pendingMasterUpdatesManager;
-    }
-
-    @Override
-    public PendingUpdatesManager getPendingSlaveUpdatesManager() {
-        return pendingSlaveUpdatesManager;
-    }
-
-    @Override
-    public JpaSync getJpaSync() {
-        return jpaSync;
+    public boolean isSyncEnabled() {
+        return syncEnabled;
     }
 
     @Override
@@ -139,27 +125,15 @@ public class AppContextBuilder implements AppContext {
         return this;
     }
 
-    public AppContextBuilder jpaContext(JpaContext arg) {
+    public AppContextBuilder persistenceUnitContext(PersistenceContext arg) {
         this.requireBuildNotYetAttemptedBeforeFieldUpdate();
-        this.jpaContext = Objects.requireNonNull(arg);
+        this.persistenceContext = Objects.requireNonNull(arg);
         return this;
     }
 
-    public AppContextBuilder pendingMasterUpdatesManager(PendingUpdatesManager arg) {
+    public AppContextBuilder syncEnabled(boolean arg) {
         this.requireBuildNotYetAttemptedBeforeFieldUpdate();
-        this.pendingMasterUpdatesManager = Objects.requireNonNull(arg);
-        return this;
-    }
-    
-    public AppContextBuilder pendingSlaveUpdatesManager(PendingUpdatesManager arg) {
-        this.requireBuildNotYetAttemptedBeforeFieldUpdate();
-        this.pendingSlaveUpdatesManager = Objects.requireNonNull(arg);
-        return this;
-    }
-
-    public AppContextBuilder jpaSync(JpaSync arg) {
-        this.requireBuildNotYetAttemptedBeforeFieldUpdate();
-        this.jpaSync = Objects.requireNonNull(arg);
+        this.syncEnabled = arg;
         return this;
     }
 
@@ -170,11 +144,8 @@ public class AppContextBuilder implements AppContext {
     }
 
     public void requireBuildNotYetAttemptedBeforeFieldUpdate() {
-        if(buildAttempted) {
-            throw new IllegalStateException("This method or any update methods may not be called after build() method is called");
-        }
+        this.requireBuildNotYetAttempted("This method or any update methods may not be called after build() method is called");
     }
-
     
     public void requireBuildNotYetAttempted(String msg) {
         if(buildAttempted) {

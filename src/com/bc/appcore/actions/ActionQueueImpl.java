@@ -16,7 +16,9 @@
 
 package com.bc.appcore.actions;
 
+import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
 
@@ -26,6 +28,10 @@ import java.util.Queue;
 public class ActionQueueImpl implements ActionQueue {
 
     private final Queue<Action> queue;
+    
+    private final Map<String, long[]> averageTimes;
+    
+    private final Map<Action, Long> startTimes;
 
     public ActionQueueImpl() {
         this(new LinkedList());
@@ -33,16 +39,8 @@ public class ActionQueueImpl implements ActionQueue {
 
     public ActionQueueImpl(Queue<Action> queue) {
         this.queue = Objects.requireNonNull(queue);
-    }
-    
-    @Override
-    public void onStarted(Action action) {
-        queue.add(action);
-    }
-    
-    @Override
-    public void onCompleted(Action action) {
-        queue.remove(action);
+        this.averageTimes = new HashMap<>();
+        this.startTimes = new HashMap<>();
     }
     
     @Override
@@ -53,5 +51,60 @@ public class ActionQueueImpl implements ActionQueue {
             }
         }
         return outputIfNone;
+    }
+    
+    @Override
+    public void onStarted(Action action) {
+        startTimes.put(action, System.currentTimeMillis());
+        queue.add(action);
+    }
+    
+    @Override
+    public void onCompleted(Action action) {
+        final Long startTime = startTimes.remove(action);
+        if(startTime != null) {
+            updateAverageTime(getKey(action), startTime);
+        }
+        queue.remove(action);
+    }
+
+    @Override
+    public long getStartTimeMillis(Action action) {
+        final Long startTime = startTimes.get(action);
+        return startTime == null ? -1 : startTime;
+    }
+    
+    @Override
+    public boolean isRunning(Action action) {
+        return getStartTimeMillis(action) != -1;
+    }
+
+    @Override
+    public long getAverageTimeSpentMillis(Class type, long outputIfNone) {
+        synchronized(averageTimes) {
+            final long [] arr = averageTimes.get(getKey(type));
+            return arr == null || arr[0] == 0 || arr[1] == 0 ? outputIfNone : arr[0] / arr[1];
+        }
+    }
+    
+    public void updateAverageTime(String className, Long startTime) {
+        synchronized(averageTimes) {
+            long [] arr = averageTimes.get(className);
+            if(arr == null) {
+                arr = new long[]{0, 0};
+                averageTimes.put(className, arr);
+            }
+            final long timeTaken = System.currentTimeMillis() - startTime;
+            arr[0] += timeTaken;
+            arr[1] += 1;
+        }
+    }
+    
+    public String getKey(Action action) {
+        return getKey(action.getClass());
+    }
+    
+    public String getKey(Class type) {
+        return type.getName();
     }
 }

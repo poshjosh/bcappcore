@@ -24,6 +24,7 @@ import java.util.function.Supplier;
  */
 public interface ObjectFactory {
     
+    //@todo registerDefault and deregisterDefault should take String not Class as arg0
     <T> void registerDefault(Class<T> type, Supplier<T> typeSupplier);
     
     void deregisterDefault(Class type);

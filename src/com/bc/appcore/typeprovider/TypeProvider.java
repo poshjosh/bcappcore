@@ -24,6 +24,10 @@ import java.util.List;
  */
 public interface TypeProvider extends MemberTypeProvider {
     
+    static TypeProvider fromParentType(Class parentType) {
+        return new TypeProviderImpl(Collections.singleton(parentType), MemberTypeProvider.fromValueType());
+    }
+    
     static TypeProvider from(final Class parentType, final Class type) {
         return new TypeProviderImpl(Collections.singleton(parentType), MemberTypeProvider.from(type));
     }

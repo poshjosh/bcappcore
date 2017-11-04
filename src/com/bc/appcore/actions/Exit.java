@@ -35,9 +35,7 @@ public class Exit implements Action<AppCore, Boolean> {
 
         if(!jpaSync.isRunning()) {
 
-            app.shutdown();
-
-            System.exit(0);
+            shutdownAndExit(app, 0);
 
             return Boolean.TRUE;
             
@@ -69,14 +67,19 @@ public class Exit implements Action<AppCore, Boolean> {
 
                     this.notifyAll();
 
-                    app.shutdown();
-
-                    System.exit(0);
+                    shutdownAndExit(app, 0);
                 }
             }
         };
 
         waitForJpaSyncThread.start();
+    }
+    
+    public void shutdownAndExit(AppCore app, int exitStatus) {
+        
+        app.shutdown();
+        
+        System.exit(exitStatus);
     }
 }
 

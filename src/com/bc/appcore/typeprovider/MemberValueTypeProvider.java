@@ -36,20 +36,33 @@ public class MemberValueTypeProvider implements MemberTypeProvider {
 
     @Override
     public Class getType(Class parentType, String name, Object value, Class outputIfNone) {
-        return value == null ? outputIfNone : value.getClass();
+        final Field field = this.getField(parentType, name, null);
+        return field != null ? field.getType() : this.getValueType(value, outputIfNone);
     }
 
     @Override
     public List<Type> getGenericTypeArguments(Class parentType, String name, Object value) {
         return value == null ? Collections.EMPTY_LIST : 
-                Arrays.asList(new ReflectionUtil().getGenericTypeArguments(this.getField(parentType, name)));
+                Arrays.asList(new ReflectionUtil().getGenericTypeArguments(this.getField(parentType, name, null)));
+    }
+
+    public Field getField(Class parentType, String name, Field outputIfNone) {
+        Field field = null;
+        if(parentType == null) {
+            field = null; 
+        }else {
+            try{
+                field = parentType.getField(name); 
+            }catch(NoSuchFieldException ignored_0) {
+                try{
+                    field = parentType.getDeclaredField(name);
+                }catch(NoSuchFieldException ignored_1) {}
+            }
+        } 
+        return field == null ? outputIfNone : field;
     }
     
-    public Field getField(Class parentType, String name) {
-        try{
-            return parentType.getField(name);
-        }catch(NoSuchFieldException | SecurityException e) {
-            throw new RuntimeException(e);
-        }
+    public Class getValueType(Object value, Class outputIfNone) {
+        return value == null ? outputIfNone : value.getClass();
     }
 }

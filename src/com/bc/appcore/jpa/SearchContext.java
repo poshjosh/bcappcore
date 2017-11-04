@@ -16,9 +16,11 @@
 
 package com.bc.appcore.jpa;
 
-import com.bc.appcore.jpa.model.ResultModel;
 import com.bc.jpa.dao.SelectDao;
 import com.bc.jpa.search.SearchResults;
+import com.bc.appcore.jpa.model.EntityResultModel;
+import java.util.function.Function;
+import javax.persistence.Query;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Feb 14, 2017 8:36:55 PM
@@ -26,18 +28,42 @@ import com.bc.jpa.search.SearchResults;
  */
 public interface SearchContext<T> {
     
+    default String getPaginationMessage(SearchResults<T> searchResults, int numberOfPages) {
+        return this.getPaginationMessage(searchResults, numberOfPages, true, false);
+    }
+    
     String getPaginationMessage(SearchResults<T> searchResults, int numberOfPages, 
             boolean forward, boolean firstElementZero);
     
     Class<T> getResultType();
     
-    ResultModel<T> getResultModel();
+    EntityResultModel<T> getResultModel();
     
-    SearchResults<T> getSearchResults();
+    default SearchResults<T> searchAll() {
+        return this.searchAll((query) -> query);
+    }
 
-    SearchResults<T> getSearchResults(String sql);
+    default SearchResults<T> searchAll(Function<Query, Query> queryFormatter) {
+        return this.getSearchResults(this.getSelectDao(), queryFormatter);
+    }
+
+    default SearchResults<T> searchAll(String textToFind) {
+        return this.searchAll(textToFind, (query) -> query);
+    }
     
+    SearchResults<T> searchAll(String textToFind, Function<Query, Query> queryFormatter);
+
+    default SearchResults<T> executeNativeQuery(String sql) {
+        return this.executeNativeQuery(sql, (query) -> query);
+    }
+    
+    SearchResults<T> executeNativeQuery(String sql, Function<Query, Query> queryFormatter);
+
     SelectDao<T> getSelectDao();
     
-    SearchResults<T> getSearchResults(SelectDao<T> dao);
+    default SearchResults<T> getSearchResults(SelectDao<T> dao) {
+        return this.getSearchResults(dao, (query) -> query);
+    }
+
+    SearchResults<T> getSearchResults(SelectDao<T> dao, Function<Query, Query> queryFormatter);
 }

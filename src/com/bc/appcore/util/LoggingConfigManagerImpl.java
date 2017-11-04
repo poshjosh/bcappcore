@@ -34,12 +34,14 @@ import java.util.Properties;
 import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.LogManager;
-import static jxl.biff.FormatRecord.logger;
+import java.util.logging.Logger;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Aug 20, 2017 7:14:29 PM
  */
 public class LoggingConfigManagerImpl implements LoggingConfigManager {
+
+    private static final Logger logger = Logger.getLogger(LoggingConfigManagerImpl.class.getName());
 
     private final List<String> readOnly = Arrays.asList(new String[]{
         "java", "javax", "sun", "com.sun", "com.mysql", "org"
@@ -97,7 +99,7 @@ public class LoggingConfigManagerImpl implements LoggingConfigManager {
         
         logger.log(Level.INFO, "Read {0} from {1}", new Object[]{loggingFilePropertyName, loggingConfigPath});
     }
-    
+
     @Override
     public Path getLogsDir(String loggingConfigPath, Path outputIfNone) throws IOException {
     

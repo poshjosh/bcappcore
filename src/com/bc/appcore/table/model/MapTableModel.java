@@ -78,10 +78,17 @@ public class MapTableModel extends AbstractTableModel {
         
         int updatedClasses = 0;
         
+        if(this.serialColumnName != null) {
+            classes[0] = String.class;
+            ++updatedClasses;
+        }
+        
         for(Map rowMap : rows) {
             
             final Object [] row = mapValuesToArray.apply(rowMap);
-//System.out.println("Row---"+Arrays.toString(row)+" @"+this.getClass());            
+            
+            logger.finer(() -> "\tRow" + Arrays.toString(row)); 
+
             this.rows.add(row);
             
             if(updatedClasses < this.columnNames.size()) {
@@ -143,5 +150,33 @@ public class MapTableModel extends AbstractTableModel {
             value = row[columnIndex];
         }
         return value;
+    }
+
+    @Override
+    public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
+        if(this.serialColumnName != null) {
+            if(columnIndex == 0) {
+                
+            }else{
+                final Object[] row = this.rows.get(rowIndex);
+                row[columnIndex-1] = aValue;
+                this.onSetValueAt(aValue, rowIndex, columnIndex);
+            }
+        }else{
+            final Object[] row = this.rows.get(rowIndex);
+            row[columnIndex] = aValue;
+            this.onSetValueAt(aValue, rowIndex, columnIndex);
+        }
+    }
+    
+    protected void onSetValueAt(Object aValue, int rowIndex, int columnIndex) { }
+    
+    public final int getColumnIndex(String columnName) {
+        return columnNames.indexOf(columnName);
+    }
+
+    @Override
+    public boolean isCellEditable(int rowIndex, int columnIndex) {
+        return this.serialColumnName == null || columnIndex != 0;
     }
 }

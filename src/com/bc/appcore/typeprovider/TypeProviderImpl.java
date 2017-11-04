@@ -16,7 +16,6 @@
 
 package com.bc.appcore.typeprovider;
 
-import com.bc.appcore.predicates.AcceptAll;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -38,8 +37,8 @@ public class TypeProviderImpl implements TypeProvider {
     private final MemberTypeProvider memberTypeProvider;
 
     public TypeProviderImpl(Set<Class> parentTypes, MemberTypeProvider memberTypeProvider) {
-        this.parentTypes = parentTypes;
-        this.memberTypeProvider = memberTypeProvider;
+        this.parentTypes = Objects.requireNonNull(parentTypes);
+        this.memberTypeProvider = Objects.requireNonNull(memberTypeProvider);
     }
     
     @Override
@@ -50,13 +49,13 @@ public class TypeProviderImpl implements TypeProvider {
         
         final Predicate<Class> valueTypeTest = (cls) -> valueType.equals(cls);
         
-        return this.getTypeList(name, value, new AcceptAll(), valueTypeTest, true);
+        return this.getTypeList(name, value, (cls) -> true, valueTypeTest, true);
     }
     
     @Override
     public List<Class> getParentTypeList(String name, Object value) {
         
-        final Predicate<Class> acceptAll = new AcceptAll();
+        final Predicate<Class> acceptAll = (cls) -> true;
         
         return this.getTypeList(name, value, acceptAll, acceptAll, true);
     }
@@ -64,7 +63,7 @@ public class TypeProviderImpl implements TypeProvider {
     @Override
     public List<Class> getTypeList(String name, Object value) {
         
-        final Predicate<Class> acceptAll = new AcceptAll();
+        final Predicate<Class> acceptAll = (cls) -> true;
         
         return this.getTypeList(name, value, acceptAll, acceptAll, false);
     }

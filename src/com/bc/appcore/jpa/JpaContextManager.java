@@ -16,8 +16,8 @@
 
 package com.bc.appcore.jpa;
 
-import com.bc.jpa.JpaContext;
-import com.bc.jpa.sync.PendingUpdatesManager;
+import com.bc.jpa.context.PersistenceContext;
+import com.bc.jpa.context.PersistenceUnitContext;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -28,17 +28,13 @@ import java.sql.SQLException;
  */
 public interface JpaContextManager {
 
-    JpaContext configureJpaContext(JpaContext jpaContext, PendingUpdatesManager pum);
+    PersistenceContext createJpaContext(URI uri, int maxTrials, boolean freshInstall) throws URISyntaxException;
 
-    JpaContext createJpaContext(URI uri, int maxTrials, boolean freshInstall) throws URISyntaxException;
+    PersistenceContext newJpaContext(URI uri) throws IOException, SQLException;
+    
+    void initDatabaseData(PersistenceUnitContext puContext) throws IOException, SQLException;
 
-    JpaContext createJpaContext(URI uri) throws IOException;
+    boolean isVirgin(PersistenceUnitContext puContext) throws SQLException;
 
-    void importInitialData(JpaContext jpaContext) throws IOException, SQLException;
-
-    boolean isVirgin(JpaContext jpaContext) throws SQLException;
-
-    boolean isVirgin(JpaContext jpaContext, String persistenceUnit) throws SQLException;
-
-    void validateJpaContext(JpaContext jpaContext);
+    void validate(PersistenceUnitContext puContext) throws SQLException;
 }

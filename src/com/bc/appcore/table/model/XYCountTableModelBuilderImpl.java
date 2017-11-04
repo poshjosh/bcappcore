@@ -17,15 +17,16 @@
 package com.bc.appcore.table.model;
 
 import com.bc.appcore.AppCore;
-import com.bc.appcore.jpa.model.ResultModel;
 import com.bc.appcore.util.RelationAccess;
-import com.bc.jpa.JpaContext;
 import com.bc.jpa.search.SearchResults;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import com.bc.appcore.jpa.model.EntityResultModel;
+import com.bc.jpa.context.PersistenceUnitContext;
+import com.bc.jpa.dao.Dao;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on May 20, 2017 3:34:37 PM
@@ -37,7 +38,7 @@ public class XYCountTableModelBuilderImpl<X, Y>
 
     private AppCore app; 
     private SearchResults searchResults; 
-    private ResultModel resultModel;
+    private EntityResultModel resultModel;
     private Class xEntityType;
     private Class yEntityType;
     private String sumRowName;
@@ -71,9 +72,13 @@ public class XYCountTableModelBuilderImpl<X, Y>
         Objects.requireNonNull(this.searchResults);
         Objects.requireNonNull(this.tableModelDisplayFormat);
         
-        final JpaContext jpaContext = this.app.getJpaContext();
-        this.xValues = jpaContext.getBuilderForSelect(this.xEntityType).getResultsAndClose();
-        this.yValues = jpaContext.getBuilderForSelect(this.yEntityType).getResultsAndClose();
+        final PersistenceUnitContext jpaContext = this.app.getActivePersistenceUnitContext();
+        try(final Dao dao = jpaContext.getDao()) {
+            this.xValues = dao.forSelect(xEntityType).from(xEntityType).createQuery().getResultList();
+        }        
+        try(final Dao dao = jpaContext.getDao()) {
+            this.yValues = dao.forSelect(yEntityType).from(yEntityType).createQuery().getResultList();
+        }        
         
         if(logger.isLoggable(Level.FINE)) {
             logger.log(Level.FINE, "\nX-axis type {0}, values: {1}\nY-axis type: {2}, values: {3}", 
@@ -143,7 +148,7 @@ public class XYCountTableModelBuilderImpl<X, Y>
     }
 
     @Override
-    public XYCountTableModelBuilder resultModel(ResultModel resultModel) {
+    public XYCountTableModelBuilder resultModel(EntityResultModel resultModel) {
         this.resultModel = resultModel;
         return this;
     }
@@ -193,7 +198,7 @@ public class XYCountTableModelBuilderImpl<X, Y>
     }
 
     @Override
-    public ResultModel getResultModel() {
+    public EntityResultModel getResultModel() {
         return resultModel;
     }
 

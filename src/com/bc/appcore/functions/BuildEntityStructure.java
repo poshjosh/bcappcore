@@ -14,23 +14,12 @@
  * limitations under the License.
  */
 
-package com.bc.appcore.jpa;
+package com.bc.appcore.functions;
 
-import com.bc.jpa.sync.impl.SlaveUpdateListener;
-import java.util.Collections;
-import com.bc.appcore.AppCore;
-import com.bc.jpa.sync.MasterSlaveTypes;
+import java.util.Map;
+import java.util.function.BiFunction;
 
 /**
- * @author Chinomso Bassey Ikwuagwu on Jul 29, 2017 11:55:06 AM
+ * @author Chinomso Bassey Ikwuagwu on Sep 8, 2017 8:25:40 PM
  */
-public class SlaveUpdateListenerImpl extends SlaveUpdateListener {
-
-    public static AppCore app;
-
-    public SlaveUpdateListenerImpl() {
-        super(
-                app == null ? null : app.getPendingSlaveUpdatesManager(), 
-                app == null ? Collections.EMPTY_LIST : app.getOrException(MasterSlaveTypes.class).getMasterTypes());
-    }
-}
+public interface BuildEntityStructure extends BiFunction<Class, Object, Map> {}

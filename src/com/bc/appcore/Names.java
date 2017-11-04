@@ -21,6 +21,8 @@ package com.bc.appcore;
  */
 public interface Names {
     
+    String RESULT_HANDLER = "resultHandler";
+    
     String CONFIGS_DIR = "configs";
     String LOGS_DIR = "logs";
     String PENDING_UPDATES_DIR = "pending_updates";

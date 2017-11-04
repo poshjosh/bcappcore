@@ -16,9 +16,9 @@
 
 package com.bc.appcore.table.model;
 
-import com.bc.appcore.jpa.model.ResultModel;
 import com.bc.jpa.search.SearchResults;
 import com.bc.appcore.AppCore;
+import com.bc.appcore.jpa.model.EntityResultModel;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on May 20, 2017 3:56:07 PM
@@ -33,7 +33,7 @@ public interface XYCountTableModelBuilder {
     
     XYCountTableModelBuilder displayFormat(TableModelDisplayFormat displayFormat);
 
-    XYCountTableModelBuilder resultModel(ResultModel resultModel);
+    XYCountTableModelBuilder resultModel(EntityResultModel resultModel);
 
     XYCountTableModelBuilder searchResults(SearchResults searchResults);
 

@@ -14,20 +14,12 @@
  * limitations under the License.
  */
 
-package com.bc.appcore.actions;
+package com.bc.appcore.functions;
 
-import com.bc.jpa.JpaContext;
+import java.util.Set;
+import java.util.function.Function;
 
 /**
- * @author Chinomso Bassey Ikwuagwu on Aug 25, 2017 10:49:11 AM
+ * @author Chinomso Bassey Ikwuagwu on Sep 8, 2017 8:09:28 PM
  */
-public class RefreshDatabase extends RefreshSearchResults {
-
-    @Override
-    public void refresh(JpaContext jpaContext, String persistenceUnit) {
-        
-        super.refresh(jpaContext, persistenceUnit);
-        
-        jpaContext.removeEntityManagerFactory(persistenceUnit, true);
-    }
-}
+public interface GetRelatedTypes extends Function<Class, Set<Class>> {}

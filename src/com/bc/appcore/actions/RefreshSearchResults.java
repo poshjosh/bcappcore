@@ -20,7 +20,7 @@ import com.bc.appcore.AppCore;
 import com.bc.appcore.exceptions.TaskExecutionException;
 import com.bc.appcore.parameter.ParameterException;
 import com.bc.appcore.parameter.ParameterExtractor;
-import com.bc.jpa.JpaContext;
+import com.bc.jpa.context.PersistenceUnitContext;
 import com.bc.jpa.search.SearchResults;
 import java.util.Map;
 
@@ -33,28 +33,16 @@ public class RefreshSearchResults implements Action<AppCore, Boolean> {
     public Boolean execute(AppCore app, Map<String, Object> params) 
             throws TaskExecutionException, ParameterException {
 
-        final JpaContext jpaContext = app.getJpaContext();
+        final PersistenceUnitContext persistenceUnitContext = app.getActivePersistenceUnitContext();
         
         final ParameterExtractor pe = app.getOrException(ParameterExtractor.class);
         
         final SearchResults searchResults = pe.getFirstValue(params, SearchResults.class);
         
-        String persistenceUnit = pe.getFirstValue(params, String.class, null);
-        
-        if(persistenceUnit == null) {
-            
-            final Class entityType = pe.getFirstValue(params, Class.class, null);
-            
-            if(entityType != null) {
-                
-                persistenceUnit = jpaContext.getMetaData().getPersistenceUnitName(entityType);
-            }
-        }
-        
-        return this.execute(jpaContext, persistenceUnit, searchResults);
+        return this.execute(persistenceUnitContext, searchResults);
     }
     
-    public Boolean execute(JpaContext jpaContext, String target, SearchResults searchResults) {
+    public Boolean execute(PersistenceUnitContext context, SearchResults searchResults) {
 
         final int pageNum = searchResults.getPageNumber();
         try{
@@ -63,19 +51,9 @@ public class RefreshSearchResults implements Action<AppCore, Boolean> {
             searchResults.setPageNumber(pageNum);
         }
         
-        final String [] puNames = target != null ? new String[]{target} : 
-                jpaContext.getMetaData().getPersistenceUnitNames();
-        
-        for(String persistenceUnit : puNames) {
-            
-            this.refresh(jpaContext, persistenceUnit);
-        }
+        context.getEntityManagerFactory().getCache().evictAll();
         
         return Boolean.TRUE;
-    }
-    
-    public void refresh(JpaContext jpaContext, String persistenceUnit) {
-        jpaContext.getEntityManagerFactory(persistenceUnit).getCache().evictAll();
     }
 }
 

@@ -17,7 +17,7 @@
 package com.bc.appcore.typeprovider;
 
 import com.bc.jpa.EntityUpdater;
-import com.bc.jpa.JpaContext;
+import com.bc.jpa.context.PersistenceUnitContext;
 import com.bc.util.ReflectionUtil;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
@@ -40,7 +40,7 @@ public class EntityMemberTypeProvider implements MemberTypeProvider {
 
     private static final Logger logger = Logger.getLogger(EntityMemberTypeProvider.class.getName());
     
-    private final JpaContext jpaContext;
+    private final PersistenceUnitContext jpaContext;
     
     private final boolean columnNamesOnly;
     
@@ -48,7 +48,7 @@ public class EntityMemberTypeProvider implements MemberTypeProvider {
     
     private final Map<Class, EntityUpdater> entityUpdaters;
     
-    public EntityMemberTypeProvider(JpaContext jpaContext, 
+    public EntityMemberTypeProvider(PersistenceUnitContext jpaContext, 
             Map<Class, Set<String>> typeColumnNames, boolean columnNamesOnly) {
         this.jpaContext = Objects.requireNonNull(jpaContext);
         this.typeColumnNames = Objects.requireNonNull(typeColumnNames);

@@ -31,7 +31,7 @@ public class GetPropertiesFileForPersistenceUnit implements Function<String, Fil
     private final String parentDir;
 
     public GetPropertiesFileForPersistenceUnit(AppContext appContext) {
-        this(appContext.getPropertiesPaths());
+        this(appContext.getPropertiesContext());
     }
     
     public GetPropertiesFileForPersistenceUnit(PropertiesContext propertiesPaths) {

@@ -19,8 +19,6 @@ package com.bc.appcore;
 import com.authsvc.client.AppAuthenticationSession;
 import com.bc.appcore.exceptions.ObjectFactoryException;
 import com.bc.config.Config;
-import com.bc.jpa.JpaContext;
-import com.bc.jpa.dao.Dao;
 import com.bc.appcore.jpa.SearchContextImpl;
 import com.bc.jpa.sync.JpaSync;
 import java.io.File;
@@ -38,19 +36,14 @@ import com.bc.appcore.jpa.SearchContext;
 import com.bc.appcore.functions.CreateActionFromClassName;
 import com.bc.appcore.exceptions.TaskExecutionException;
 import com.bc.appcore.exceptions.TargetNotFoundException;
-import com.bc.appcore.jpa.SlaveUpdateListenerImpl;
-import com.bc.appcore.jpa.model.ResultModel;
 import com.bc.appcore.parameter.ParameterException;
-import com.bc.appcore.predicates.AcceptAll;
 import com.bc.appcore.util.Expirable;
 import com.bc.appcore.util.ExpirableCache;
 import com.bc.appcore.util.Settings;
 import com.bc.util.JsonFormat;
 import java.nio.file.Paths;
-import java.util.HashSet;
 import java.util.Optional;
 import java.util.Properties;
-import java.util.Set;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import com.bc.jpa.sync.PendingUpdatesManager;
@@ -58,6 +51,17 @@ import com.bc.appcore.properties.PropertiesContext;
 import com.bc.appcore.actions.ActionCommandsCore;
 import com.bc.appcore.actions.ActionQueue;
 import com.bc.appcore.actions.ActionQueueImpl;
+import com.bc.appcore.jpa.model.EntityResultModel;
+import com.bc.jpa.context.PersistenceContext;
+import com.bc.jpa.context.PersistenceUnitContext;
+import com.bc.jpa.sync.MasterSlavePersistenceContext;
+import com.bc.jpa.sync.impl.JpaSyncImpl;
+import com.bc.jpa.sync.impl.MasterSlavePersistenceContextImpl;
+import com.bc.jpa.sync.impl.PendingUpdatesManagerImpl;
+import com.bc.jpa.sync.impl.SlaveUpdater;
+import com.bc.jpa.sync.predicates.PersistenceCommunicationsLinkFailureTest;
+import java.nio.file.Path;
+import java.util.Set;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Feb 7, 2017 11:26:00 PM
@@ -71,6 +75,12 @@ public abstract class AbstractAppCore implements AppCore {
     private final Map<String, Object> attributes;
     
     private final ActionQueue actionQueue;
+    
+    private final PendingUpdatesManager pendingSlaveUpdatesManager;
+
+    private final String masterPersistenceUnit;
+    private final String slavePersistenceUnit;
+    private String activePersistenceUnit;
     
     private User user;
     
@@ -88,7 +98,12 @@ public abstract class AbstractAppCore implements AppCore {
         
         this.actionQueue = new ActionQueueImpl();
         
-        SlaveUpdateListenerImpl.app = AbstractAppCore.this;
+        this.masterPersistenceUnit = this.getPersistenceUnitMatching(this.getMasterPersistenceUnitTest());
+        this.slavePersistenceUnit = this.getPersistenceUnitMatching(this.getSlavePersistenceUnitTest());
+        
+        this.pendingSlaveUpdatesManager = this.createPendingSlaveUpdatesManager();
+
+        this.switchToMasterDatabase();
     }
     
     @Override
@@ -108,16 +123,12 @@ public abstract class AbstractAppCore implements AppCore {
         
         this.attributes.clear();
         
-        if(!this.getPendingMasterUpdatesManager().isStopRequested()) {
-            this.getPendingMasterUpdatesManager().requestStop();
-        }
-        
         if(!this.getPendingSlaveUpdatesManager().isStopRequested()) {
             this.getPendingSlaveUpdatesManager().requestStop();
         }
         
-        if(this.getJpaContext().isOpen()) {
-            this.getJpaContext().close();
+        if(this.getPersistenceContext().isOpen()) {
+            this.getPersistenceContext().close();
         }
         
         try{
@@ -127,6 +138,78 @@ public abstract class AbstractAppCore implements AppCore {
         }
         
         this.deleteTempFiles(Paths.get(this.getWorkingDir()).toFile());
+    }
+
+    @Override
+    public MasterSlavePersistenceContext getMasterSlavePersistenceContext() {
+        return new MasterSlavePersistenceContextImpl(
+                this.getPersistenceContext().getContext(this.masterPersistenceUnit),
+                this.getPersistenceContext().getContext(this.slavePersistenceUnit)
+        );
+    }
+    
+    @Override
+    public PersistenceUnitContext getActivePersistenceUnitContext() {
+        return this.getPersistenceContext().getContext(activePersistenceUnit);
+    }
+    
+    @Override
+    public JpaSync getJpaSync() {
+        return !this.isSyncEnabled() ? JpaSync.NO_OP :
+                new JpaSyncImpl(
+                        this.getPersistenceContext().getContext(this.masterPersistenceUnit), 
+                        this.getPersistenceContext().getContext(this.slavePersistenceUnit), 
+                        20, 
+                        new PersistenceCommunicationsLinkFailureTest());
+    }
+    
+    @Override
+    public boolean isUsingMasterDatabase() {
+        final boolean output = this.activePersistenceUnit.equals(this.masterPersistenceUnit);
+        return output;
+    }
+    
+    @Override
+    public void switchToMasterDatabase() {
+        this.activePersistenceUnit = this.masterPersistenceUnit;
+        if(this.pendingSlaveUpdatesManager.isPaused()) {
+            this.pendingSlaveUpdatesManager.resume();
+        }
+    }
+    
+    @Override
+    public void switchToBackupDatabase() {
+        this.activePersistenceUnit = this.slavePersistenceUnit;
+        if(!this.getPendingSlaveUpdatesManager().isPaused()) {
+            this.getPendingSlaveUpdatesManager().pause();
+        }
+    }
+    
+    public String getPersistenceUnitMatching(Predicate<String> test) {
+        String output = null;
+        final Set<String> puNames = this.getPersistenceContext().getMetaData().getPersistenceUnitNames();
+        for(String puName : puNames) {
+            if(test.test(puName)) {
+                output = puName;
+                break;
+            }
+        }
+        return output;
+    }
+
+    protected PendingUpdatesManager createPendingSlaveUpdatesManager() {
+        return !this.isSyncEnabled() ? PendingUpdatesManager.NO_OP :
+                new PendingUpdatesManagerImpl(
+                        this.getPendingUpdatesFilePath(Names.PENDING_SLAVE_UPDATES_FILE_NAME).toFile(),
+                        new SlaveUpdater(
+                                this.getPersistenceContext().getContext(this.masterPersistenceUnit),
+                                this.getPersistenceContext().getContext(this.slavePersistenceUnit)
+                        ),
+                        new PersistenceCommunicationsLinkFailureTest());
+    }
+
+    protected Path getPendingUpdatesFilePath(String fname) {
+        return Paths.get(this.getPropertiesContext().getWorkingDirPath(), Names.PENDING_UPDATES_DIR, fname);
     }
     
     @Override
@@ -215,7 +298,7 @@ public abstract class AbstractAppCore implements AppCore {
 
     @Override
     public <T> SearchContext<T> getSearchContext(Class<T> entityType) {
-        ResultModel<T> resultModel = this.getResultModel(entityType, null);
+        EntityResultModel<T> resultModel = this.getResultModel(entityType, null);
         return new SearchContextImpl<>(this, Objects.requireNonNull(resultModel), 20, true);
     }
 
@@ -240,35 +323,6 @@ public abstract class AbstractAppCore implements AppCore {
     }
 
     @Override
-    public Dao getDao(Class entityType) {
-        return this.getJpaContext().getDao(entityType);
-    }
-
-    /**
-     * This returns the actual persistence unit names used by the application. And it is
-     * typically a subset of those returned by {@link #getJpaContext()#getPersistenceUnitNames()}.
-     * @return The names of the persistence units used by the application
-     * @see #getJpaContext() 
-     */
-    @Override
-    public Set<String> getPersistenceUnitNames() {
-        final Predicate<String> puNameTest = this.getPersistenceUnitNameTest();
-        final String [] puNames = this.getJpaContext().getMetaData().getPersistenceUnitNames();
-        final Set<String> accepted = new HashSet();
-        for(String puName : puNames) {
-            if(!puNameTest.test(puName)) {
-                continue;
-            }
-            accepted.add(puName);
-        }
-        return accepted;
-    }
-    
-    public Predicate<String> getPersistenceUnitNameTest() {
-        return new AcceptAll();
-    }
-
-    @Override
     public Settings getSettings() {
         return this.getOrException(Settings.class);
     }
@@ -286,6 +340,11 @@ public abstract class AbstractAppCore implements AppCore {
     @Override
     public JsonFormat getJsonFormat() {
         return new JsonFormat(true, true, "  ");
+    }
+
+    @Override
+    public boolean isSyncEnabled() {
+        return appContext.isSyncEnabled();
     }
 
     @Override
@@ -309,8 +368,8 @@ public abstract class AbstractAppCore implements AppCore {
     }
 
     @Override
-    public PropertiesContext getPropertiesPaths() {
-        return appContext.getPropertiesPaths();
+    public PropertiesContext getPropertiesContext() {
+        return appContext.getPropertiesContext();
     }
 
     @Override
@@ -322,29 +381,31 @@ public abstract class AbstractAppCore implements AppCore {
     public Properties getSettingsConfig() {
         return appContext.getSettingsConfig();
     }
-
+    
     @Override
-    public JpaContext getJpaContext() {
-        return appContext.getJpaContext();
-    }
-
-    @Override
-    public PendingUpdatesManager getPendingMasterUpdatesManager() {
-        return appContext.getPendingMasterUpdatesManager();
+    public PersistenceContext getPersistenceContext() {
+        return appContext.getPersistenceContext();
     }
 
     @Override
     public PendingUpdatesManager getPendingSlaveUpdatesManager() {
-        return appContext.getPendingSlaveUpdatesManager();
-    }
-
-    @Override
-    public JpaSync getJpaSync() {
-        return appContext.getJpaSync();
+        return this.pendingSlaveUpdatesManager;
     }
 
     @Override
     public ExpirableCache<Object> getExpirableAttributes() {
         return appContext.getExpirableAttributes();
+    }
+
+    public String getMasterPersistenceUnit() {
+        return masterPersistenceUnit;
+    }
+
+    public String getSlavePersistenceUnit() {
+        return slavePersistenceUnit;
+    }
+
+    public String getActivePersistenceUnit() {
+        return activePersistenceUnit;
     }
 }

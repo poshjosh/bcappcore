@@ -21,11 +21,15 @@ package com.bc.appcore.actions;
  */
 public interface ActionCommandsCore {
     
-    String REFRESH_SEARCHRESULTS = RefreshSearchResults.class.getName();
+    String SEARCH = Search.class.getName();
     
-    String REFRESH_DATABASE = RefreshDatabase.class.getName();
+    String REFRESH_SEARCHRESULTS = RefreshSearchResults.class.getName();
 
     String DELETE_TEMP_FILES_IN_DIR = DeleteAllTempFilesInDir.class.getName();
     
     String EXIT = Exit.class.getName();
+
+    String SYNC_DATABASE = SyncDatabase.class.getName();
+    
+    String SYNC_IF_SLAVE_DATABASE_EMPTY = SyncIfSlaveDatabaseEmpty.class.getName();
 }

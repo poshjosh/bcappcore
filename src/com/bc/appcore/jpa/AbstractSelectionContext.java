@@ -18,8 +18,6 @@ package com.bc.appcore.jpa;
 
 import com.bc.appcore.util.Selection;
 import com.bc.jpa.EntityUpdater;
-import com.bc.jpa.JpaContext;
-import com.bc.jpa.dao.BuilderForSelect;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -29,6 +27,8 @@ import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import com.bc.appcore.AppCore;
+import com.bc.jpa.context.PersistenceUnitContext;
+import com.bc.jpa.dao.Select;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Mar 31, 2017 5:28:32 PM
@@ -70,9 +70,9 @@ public abstract class AbstractSelectionContext implements SelectionContext {
             
         }else{
             
-            final JpaContext jpaContext = app.getJpaContext();
+            final PersistenceUnitContext jpaContext = app.getActivePersistenceUnitContext();
             
-            try(BuilderForSelect builder = jpaContext.getBuilderForSelect(entityType)) {
+            try(Select builder = jpaContext.getDao().forSelect(entityType)) {
                 
                 final List entityList = this.sort(
                         entityType, builder.from(entityType).createQuery().getResultList()
@@ -134,7 +134,7 @@ public abstract class AbstractSelectionContext implements SelectionContext {
     public EntityUpdater getEntityUpdater(Class entityType) {
         EntityUpdater output = this.updaters.get(entityType);
         if(output == null) {
-            output = app.getJpaContext().getEntityUpdater(entityType);
+            output = app.getActivePersistenceUnitContext().getEntityUpdater(entityType);
             this.updaters.put(entityType, output);
         }
         return output;

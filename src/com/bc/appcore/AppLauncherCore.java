@@ -29,13 +29,6 @@ import com.bc.appcore.util.ExpirableCacheImpl;
 import com.bc.appcore.util.Copy;
 import com.bc.appcore.util.LoggingConfigManagerImpl;
 import com.bc.config.Config;
-import com.bc.jpa.JpaContext;
-import com.bc.jpa.sync.JpaSync;
-import com.bc.jpa.sync.PendingUpdatesManager;
-import com.bc.jpa.sync.impl.JpaSyncImpl;
-import com.bc.jpa.sync.impl.PendingUpdatesManagerImpl;
-import com.bc.jpa.sync.impl.UpdaterImpl;
-import com.bc.jpa.sync.predicates.PersistenceCommunicationsLinkFailureTest;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -63,6 +56,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import com.bc.appcore.properties.PropertiesContext;
 import com.bc.config.ConfigImpl;
+import com.bc.jpa.context.PersistenceContext;
 import java.util.ArrayList;
 
 /**
@@ -175,6 +169,8 @@ public class AppLauncherCore<A extends AppCore> {
     
     protected void onLaunchBegan() { }
     
+    protected void onInitializationCompleted(A app) { }
+    
     protected void onInstallationCompleted(A app) { }
     
     protected void onLaunchCompleted(A app) { }
@@ -221,7 +217,7 @@ public class AppLauncherCore<A extends AppCore> {
             processLog.log("Initializing folders");
 
             if(this.parentPropertiesContextList == null && this.parentWorkingDirPathList != null) {
-                this.parentPropertiesPaths(productionMode, this.parentWorkingDirPathList);
+                this.parentPropertiesContexts(productionMode, this.parentWorkingDirPathList);
             }
             
             if(appId != null) {
@@ -230,13 +226,14 @@ public class AppLauncherCore<A extends AppCore> {
                 }
 
                 if(this.propertiesContext == null) {
-                    this.workingPropertiesPathsFromAppId(appId);
+                    this.workingPropertiesContextFromAppId(appId);
                 }
             }
             Objects.requireNonNull(this.parentPropertiesContextList);
             Objects.requireNonNull(this.propertiesContext);
             
             final String workingDirPath = propertiesContext.getWorkingDirPath();
+            logger.fine(() -> "Working dir path: " + workingDirPath);
             
             if(dirsToCreate == null) {
                 dirsToCreate = new String[]{
@@ -264,6 +261,8 @@ public class AppLauncherCore<A extends AppCore> {
                 this.initFile(new File(toCreate));
             }
             
+            System.setProperty("derby.system.home", Paths.get(workingDirPath, "derby_db").toString());            
+            
             this.newInstallation = !this.isInstalled();
             
             processLog.log("Loading configurations");
@@ -280,7 +279,7 @@ public class AppLauncherCore<A extends AppCore> {
                 final Path loggingConfigPath = this.propertiesContext.getLogging();
                 int i = 0;
                 for(Path parentPath : parentLogConfigPaths) {
-                    
+                    logger.info(() -> "Copying: "+parentPath+", to: "+loggingConfigPath);
                     copy.copy(parentPath, loggingConfigPath, charsetName, i++ != 0);
                 }
             }
@@ -289,29 +288,23 @@ public class AppLauncherCore<A extends AppCore> {
 
             processLog.log("Initializing database");
 
-            final JpaContextManager jpaMgr = this.getJpaContextManager();
+            final JpaContextManager jpaContextManager = this.getJpaContextManager();
             
             final String persistencePath = this.getPersistenceFile(config);
             
-            final URL url = new ResourceLoader(this.classLoader).get(persistencePath, null);
-            final URI persistenceURI = url == null ? null : url.toURI();
+            final URI persistenceURI;
+            if((Paths.get(persistencePath).toFile()).exists()) {
+                persistenceURI = Paths.get(persistencePath).toUri();
+            }else{
+                final URL url = new ResourceLoader(this.classLoader).get(persistencePath, null);
+                persistenceURI = url == null ? null : url.toURI();
+            }
             
             logger.info(() -> "Persistence config path: " + persistencePath + ", URI: " + persistenceURI);
             
-            JpaContext jpaContext = jpaMgr.createJpaContext(persistenceURI, maxTrials, newInstallation);
+            final PersistenceContext jpaContext = jpaContextManager.createJpaContext(
+                    persistenceURI, maxTrials, newInstallation);
             
-            final PendingUpdatesManager pendingMasterUpdatesMgr = this.createPendingMasterUpdatesManager(jpaContext);
-            
-            final PendingUpdatesManager pendingSlaveUpdatesMgr = this.createPendingSlaveUpdatesManager(jpaContext);
-
-            final JpaSync jpaSync = !enableSync ? JpaSync.NO_OP :
-                    new JpaSyncImpl(jpaContext, 
-                            new UpdaterImpl(jpaContext, this.masterPersistenceUnitTest, this.slavePersistenceUnitTest), 
-                            20, 
-                            new PersistenceCommunicationsLinkFailureTest());
-            
-            jpaContext = jpaMgr.configureJpaContext(jpaContext, pendingMasterUpdatesMgr);
-
             processLog.log("Initializing application context");
             
             final AppAuthenticationSession authSession = this.createAuthSession();
@@ -333,11 +326,9 @@ public class AppLauncherCore<A extends AppCore> {
                     .config(config)
                     .expirableCache(expirableCache)
                     .propertiesPaths(propertiesContext)
-                    .jpaContext(jpaContext)
-                    .jpaSync(jpaSync)
+                    .persistenceUnitContext(jpaContext)
+                    .syncEnabled(enableSync)
                     .settingsConfig(settingsMeta)
-                    .pendingMasterUpdatesManager(pendingMasterUpdatesMgr)
-                    .pendingSlaveUpdatesManager(pendingSlaveUpdatesMgr)
                     .build();
             
             final A app = this.createApp.apply(appContext);
@@ -345,6 +336,8 @@ public class AppLauncherCore<A extends AppCore> {
             app.init();
 
             setInstalled(true);
+            
+            this.onInitializationCompleted(app);
 
             final boolean installed = this.isInstalled();
             
@@ -362,7 +355,7 @@ public class AppLauncherCore<A extends AppCore> {
             }
 
             addShutdownHook(app);
-
+            
             java.awt.EventQueue.invokeLater(new Runnable() {
                 @Override
                 public void run() {
@@ -370,8 +363,6 @@ public class AppLauncherCore<A extends AppCore> {
                         
                         initUI(app);
                         
-                        callOnLaunchCompletedInSeparateThread(app);
-
                     }catch(Exception e) {
                         
                         processLog.log("Error");
@@ -380,13 +371,18 @@ public class AppLauncherCore<A extends AppCore> {
                         onStartupException(e);
                         
                     }finally{
-                        
-                        processLog.destroy();
-                        
-                        setBusy(false);
+                        try{
+                            processLog.destroy();
+                        }finally{
+                            busy.set(false);
+                        }
                     }
                 }
             });
+            
+            this.waitTillCompletion();
+            
+            this.onLaunchCompleted(app);
             
             return app;
             
@@ -405,7 +401,7 @@ public class AppLauncherCore<A extends AppCore> {
         return this.getInstallationFile().exists();
     }
     
-    public void setInstalled(boolean installed) throws IOException {
+    protected void setInstalled(boolean installed) throws IOException {
         final File file = this.getInstallationFile();
         if(installed) {
             if(!file.exists()) {
@@ -434,7 +430,7 @@ public class AppLauncherCore<A extends AppCore> {
     }
     
     public String getPersistenceFile(Config config) {
-        return config.getString("persistenceFile");
+        return config.getString("persistenceFile", "META-INF/persistence.xml");
     }
     
     protected AppLauncherCore parentPropertiesPathsFromAppIds(boolean productionMode, String ...appIds) {
@@ -442,18 +438,21 @@ public class AppLauncherCore<A extends AppCore> {
         for(int i=0; i<appIds.length; i++) {
             defaultWorkingDirPaths[i] = this.getAppMetaInfWorkingDirPath(appIds[i]);
         }
-        return this.parentPropertiesPaths(productionMode, defaultWorkingDirPaths);
+        return this.parentPropertiesContexts(productionMode, defaultWorkingDirPaths);
     }
     public String getAppMetaInfWorkingDirPath(String fname) {
         final String metaInf = "META-INF/" + fname;
-        final String uriStr = classLoader.getResource(metaInf).toExternalForm();
-        logger.fine(() -> "META-INF working dir: " + uriStr);
-        return uriStr;
+//        try{
+            logger.fine(() -> "META-INF working dir: " + metaInf);
+            return metaInf; // This worked for desktop client: BuzzwearsProductUploader
+//        }catch(URISyntaxException e) { 
+//            throw new RuntimeException(e);
+//        }
     }
-    protected AppLauncherCore parentPropertiesPaths(boolean productionMode, String ...parentWorkingDirPaths) {
-        return this.parentPropertiesPaths(productionMode, Arrays.asList(parentWorkingDirPaths));
+    protected AppLauncherCore parentPropertiesContexts(boolean productionMode, String ...parentWorkingDirPaths) {
+        return this.parentPropertiesContexts(productionMode, Arrays.asList(parentWorkingDirPaths));
     }
-    protected AppLauncherCore parentPropertiesPaths(boolean productionMode, List<String> parentWorkingDirPaths) {
+    protected AppLauncherCore parentPropertiesContexts(boolean productionMode, List<String> parentWorkingDirPaths) {
         final Function<String, PropertiesContext> create = (workingDirPath) ->
                 productionMode ? 
                 PropertiesContext.builder().workingDirPath(workingDirPath).build() : 
@@ -462,7 +461,7 @@ public class AppLauncherCore<A extends AppCore> {
                 parentWorkingDirPaths.stream().map(create).collect(Collectors.toList());
         return this.parentPropertiesPaths(list);
     }
-    protected AppLauncherCore workingPropertiesPathsFromAppId(String appId) {
+    protected AppLauncherCore workingPropertiesContextFromAppId(String appId) {
         this.appId = appId;
         final String workingDir = this.getUserHomeWorkingDirPath(appId);
         return this.workingDirPath(workingDir);
@@ -474,7 +473,7 @@ public class AppLauncherCore<A extends AppCore> {
     }
     
     public JpaContextManager getJpaContextManager() {
-        return new JpaContextManagerImpl(this.masterPersistenceUnitTest);
+        return new JpaContextManagerImpl();
     }
     
     /**
@@ -483,18 +482,6 @@ public class AppLauncherCore<A extends AppCore> {
      * @param app The app whose UI will be initialized
      */
     protected void initUI(A app) { }
-    
-    protected PendingUpdatesManager createPendingMasterUpdatesManager(JpaContext jpaContext) {
-        return PendingUpdatesManager.NO_OP;
-    }
-    
-    protected PendingUpdatesManager createPendingSlaveUpdatesManager(JpaContext jpaContext) {
-        return !enableSync ? PendingUpdatesManager.NO_OP :
-                new PendingUpdatesManagerImpl(
-                        this.getPendingUpdatesFilePath(Names.PENDING_SLAVE_UPDATES_FILE_NAME).toFile(),
-                        new UpdaterImpl(jpaContext, this.masterPersistenceUnitTest, this.slavePersistenceUnitTest),
-                        new PersistenceCommunicationsLinkFailureTest());
-    }
     
     protected Properties getDefaultAuthProperties() {
         Objects.requireNonNull(this.appId);
@@ -565,10 +552,6 @@ public class AppLauncherCore<A extends AppCore> {
         return authenticationSession;
     }
     
-    protected Path getPendingUpdatesFilePath(String fname) {
-        return Paths.get(this.propertiesContext.getWorkingDirPath(), Names.PENDING_UPDATES_DIR, fname);
-    }
-    
     protected Set<Path> getPropertiesPaths(List<PropertiesContext> pathList, String typeName) {
         final Function<PropertiesContext, Path> mapper = (ppl) -> ppl.get(typeName);
         return this.mapPropertiesPaths(pathList, mapper);
@@ -624,7 +607,7 @@ public class AppLauncherCore<A extends AppCore> {
         return this.combineProperties(list, typeName, charsetName==null?this.defaultCharsetName:charsetName);
     }
     
-    public Properties combineProperties(List<PropertiesContext> propsCtxList, 
+    protected Properties combineProperties(List<PropertiesContext> propsCtxList, 
             String typeName, String charsetName) throws IOException {
         
         final Properties combinedProperties = new Properties();
@@ -682,34 +665,9 @@ public class AppLauncherCore<A extends AppCore> {
         });
     }
     
-    private void callOnLaunchCompletedInSeparateThread(A app) {
-        new Thread(this.getClass().getName()+"#onLaunchCompleted_WorkerThread"){
-            @Override
-            public void run() {
-                try{
-
-                    AppLauncherCore.this.onLaunchCompleted(app);
-
-                }catch(RuntimeException e) {
-                    logger.log(Level.WARNING, "Exception executing method " + 
-                            this.getClass().getName()+"#onLaunchCompleted() in thread " +
-                            Thread.currentThread().getName(), e);
-                }
-            }
-        }.start();
-    }
-    
-    protected synchronized void setBusy(boolean b) {
-        busy.set(b);
-    }
-
-    public synchronized boolean isBusy() {
-        return busy.get();
-    }
-    
     public synchronized void waitTillCompletion() throws InterruptedException{
         try{
-            while(isBusy()) {
+            while(busy.get()) {
                 this.wait(1000);
             }
         }finally{

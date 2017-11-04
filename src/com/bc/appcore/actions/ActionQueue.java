@@ -21,9 +21,31 @@ package com.bc.appcore.actions;
  */
 public interface ActionQueue {
 
+    default long getEstimatedTimeLeftMillis(Action action, long outputIfNone) {
+        if(!isRunning(action)) {
+            throw new IllegalStateException(Action.class.getSimpleName()+" must be running before calling getEstimatedTimeLeftMillis()");
+        }
+        final long averageTimeForThisAction = this.getAverageTimeSpentMillis(action.getClass(), -1L);
+        if(averageTimeForThisAction == -1L) {
+            return outputIfNone;
+        }
+        return averageTimeForThisAction - (System.currentTimeMillis() - getStartTimeMillis(action));
+    }
+    
+    long getAverageTimeSpentMillis(Class type, long outputIfNone);
+    
+    long getStartTimeMillis(Action action);
+    
+    default <T extends Action> boolean isRunning(Class<T> type) {
+        final Action action = this.getAction(type, null);
+        return action == null ? false : this.isRunning(action);
+    }
+
     <T extends Action> T getAction(Class<T> type, T outputIfNone);
 
     void onStarted(Action action);
     
     void onCompleted(Action action);
+    
+    boolean isRunning(Action action);
 }

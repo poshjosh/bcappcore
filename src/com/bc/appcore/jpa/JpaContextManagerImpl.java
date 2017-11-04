@@ -17,17 +17,18 @@
 package com.bc.appcore.jpa;
 
 import com.bc.appcore.exceptions.UserRuntimeException;
-import com.bc.jpa.JpaContext;
-import com.bc.jpa.JpaContextImpl;
-import com.bc.jpa.JpaMetaData;
-import com.bc.jpa.sync.PendingUpdatesManager;
+import com.bc.jpa.context.PersistenceContext;
+import com.bc.jpa.context.PersistenceContextEclipselinkOptimized;
+import com.bc.jpa.context.PersistenceUnitContext;
 import com.bc.jpa.sync.predicates.PersistenceCommunicationsLinkFailureTest;
+import com.bc.sql.MySQLDateTimePatterns;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Objects;
-import java.util.function.Predicate;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -38,33 +39,29 @@ public class JpaContextManagerImpl implements JpaContextManager {
 
     private static final Logger logger = Logger.getLogger(JpaContextManagerImpl.class.getName());
     
-    private final Predicate<String> persistenceUnitTest;
-    
-    public JpaContextManagerImpl() {
-        this((persistenceUnit) -> true);
-    }
-    
-    public JpaContextManagerImpl(Predicate<String> persistenceUnitTest) {
-        this.persistenceUnitTest = Objects.requireNonNull(persistenceUnitTest);
-    }
+    public JpaContextManagerImpl() {  }
     
     @Override
-    public JpaContext createJpaContext(URI uri, int maxTrials, boolean freshInstall) 
+    public PersistenceContext createJpaContext(URI uri, int maxTrials, boolean freshInstall) 
             throws URISyntaxException {
         
-        JpaContext jpaContext = null;
+        PersistenceContext jpaContext = null;
+        
         int trials = 0;
+        
         while(trials++ < maxTrials) {
             try{
                 
-                jpaContext = this.createJpaContext(uri);
+                jpaContext = this.newJpaContext(uri);
 
-                if(freshInstall && this.isVirgin(jpaContext)) {
-                    
-                    this.importInitialData(jpaContext);
-                }
+                final Set<String> puNames = jpaContext.getMetaData(false).getPersistenceUnitNames();
                 
-                this.validateJpaContext(jpaContext);
+                for(String puName : puNames) {
+                    
+                    PersistenceUnitContext puContext = jpaContext.getContext(puName);
+                    
+                    this.initJpaContext(puContext);
+                }
                 
                 break;
                 
@@ -84,53 +81,70 @@ public class JpaContextManagerImpl implements JpaContextManager {
     }
     
     @Override
-    public boolean isVirgin(JpaContext jpaContext) throws SQLException {
-        boolean virgin = true;
-        final String [] puNames = jpaContext.getMetaData().getPersistenceUnitNames();
-        for(String puName : puNames) {
-            if(!this.persistenceUnitTest.test(puName)) {
-                continue;
-            }
-            if( !(virgin = this.isVirgin(jpaContext, puName)) ) {
-                break;
-            } 
+    public PersistenceContext newJpaContext(URI uri) throws IOException, SQLException {
+        return new PersistenceContextEclipselinkOptimized(
+                        uri, new MySQLDateTimePatterns()
+        );
+    }
+    
+    public final void initJpaContext(PersistenceUnitContext puContext) 
+            throws SQLException, IOException {
+
+        logger.entering(this.getClass().getName(), "initJpaContext(PersistenceUnitContext)", puContext);
+
+        if(this.isVirgin(puContext)) {
+
+            this.initDatabaseData(puContext);
         }
-        return virgin;
+
+        if(!puContext.isMetaDataLoaded()) {
+            puContext.loadMetaData();
+        }
+        
+        this.validate(puContext);
     }
-     
+    
     @Override
-    public boolean isVirgin(JpaContext jpaContext, String persistenceUnit) 
-            throws SQLException {
+    public boolean isVirgin(PersistenceUnitContext puContext) throws SQLException {
             
-        final JpaMetaData metaData = jpaContext.getMetaData();
+        logger.entering(this.getClass().getName(), "isVirgin(PersistenceUnitContext)", puContext.getName());
+        
+        final List<String> existingListedTables = puContext.getMetaData(false)
+                .fetchExistingListedTables(puContext.getPersistenceContext());
+        
+        final boolean virgin = existingListedTables.isEmpty();
 
-        final boolean virgin = !metaData.isAnyTableExisting(persistenceUnit);
-
-        logger.fine(() -> "Virgin: "+virgin+", persistence unit; " + persistenceUnit);
+        logger.fine(() -> "Virgin: "+virgin+", persistence unit; " + puContext.getPersistenceUnitName());
         
         return virgin;
     }
     
     @Override
-    public JpaContext createJpaContext(URI uri) throws IOException {
-        
-        final JpaContext jpaContext = new JpaContextImpl(uri, null);
-        
-        return jpaContext;
-    }
-    
-    @Override
-    public void importInitialData(JpaContext jpaContext) throws IOException, SQLException { }
-    
-    @Override
-    public void validateJpaContext(JpaContext jpaContext) { }
-    
-    @Override
-    public JpaContext configureJpaContext(JpaContext jpaContext, PendingUpdatesManager pum) { 
-        return jpaContext;
+    public void initDatabaseData(PersistenceUnitContext puContext) 
+            throws IOException, SQLException { 
     }
 
-    public Predicate<String> getPersistenceUnitTest() {
-        return persistenceUnitTest;
+    @Override
+    public void validate(PersistenceUnitContext puContext) throws SQLException { 
+        
+        logger.entering(this.getClass().getName(), "validate(PersistenceUnitContext)", puContext.getName());
+        
+        if(!puContext.isMetaDataLoaded()) {
+            puContext.loadMetaData();
+        }
+        
+        final String persistenceUnit = puContext.getPersistenceUnitName();
+        
+        final Set<Class> classes = puContext.getMetaData().getEntityClasses();
+        
+        for(Class cls : classes) {
+            
+            final Number count = puContext.getDao().forSelect(Number.class)
+                    .from(cls).count().getSingleResultAndClose();
+            logger.finer(() -> "Count: " + count + ", persistence unit: " + 
+                    persistenceUnit + ", entity type: " + cls.getName());
+//            jpaContext.getDaoForSelect(cls).from(cls).createQuery()
+//                    .setFirstResult(0).setMaxResults(1).getResultList();
+        }
     }
 }

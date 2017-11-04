@@ -14,18 +14,14 @@
  * limitations under the License.
  */
 
-package com.bc.appcore.sql.script.predicates;
+package com.bc.appcore.functions;
 
-import java.util.function.Predicate;
+import java.util.Map;
+import java.util.function.BiFunction;
 
 /**
- * @author Chinomso Bassey Ikwuagwu on Jul 22, 2017 12:50:19 PM
+ * @author Chinomso Bassey Ikwuagwu on Sep 9, 2017 9:18:55 AM
  */
-public class SqlScriptLineIsCommentTest implements Predicate<String> {
+public interface BuildMap extends BiFunction<Class, Object, Map> {
 
-    @Override
-    public boolean test(String line) {
-        
-        return line.startsWith("//") || line.startsWith("--");
-    }
 }

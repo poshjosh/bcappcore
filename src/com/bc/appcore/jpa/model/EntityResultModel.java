@@ -21,7 +21,7 @@ import java.util.List;
 /**
  * @author Chinomso Bassey Ikwuagwu on Feb 14, 2017 8:20:41 PM
  */
-public interface ResultModel<T> {
+public interface EntityResultModel<T> {
     
     Class<T> getEntityType();
     
@@ -29,11 +29,11 @@ public interface ResultModel<T> {
     
     Object get(T entity, int rowIndex, int columnIndex);
     
-    Object get(T entity, int rowIndex, String columnName);
-    
     Object set(T entity, int rowIndex, int columnIndex, Object value);
     
-    Object set(T entity, int rowIndex, String columnName, Object value);
+    boolean isPendingUpdate(int row, int column);
+    
+    int update();
     
     Class getColumnClass(int columnIndex);
     

@@ -16,16 +16,16 @@
 
 package com.bc.appcore.table.model;
 
-import com.bc.appcore.jpa.model.ResultModel;
 import com.bc.jpa.search.SearchResults;
 import java.util.List;
+import com.bc.appcore.jpa.model.EntityResultModel;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Jun 8, 2017 3:17:56 PM
  */
 public interface XYTableMetaData<X, Y, Z> {
 
-    ResultModel getResultModel();
+    EntityResultModel getResultModel();
 
     SearchResults getSearchResults();
 

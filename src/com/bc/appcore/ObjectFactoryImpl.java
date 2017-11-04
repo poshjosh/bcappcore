@@ -21,6 +21,10 @@ import com.bc.appcore.typeprovider.TypeProvider;
 import com.bc.appcore.exceptions.ObjectCreationException;
 import com.bc.appcore.exceptions.ObjectFactoryException;
 import com.bc.appcore.exceptions.ObjectNotSupportedException;
+import com.bc.appcore.functions.BuildEntityStructure;
+import com.bc.appcore.functions.BuildEntityStructureImpl;
+import com.bc.appcore.functions.GetRelatedTypes;
+import com.bc.appcore.functions.GetRelatedTypesImpl;
 import com.bc.appcore.functions.ReplaceNonWordCharsWithUnderscore;
 import com.bc.appcore.jpa.model.ColumnLabelProvider;
 import com.bc.appcore.jpa.model.ColumnLabelProviderImpl;
@@ -38,9 +42,6 @@ import com.bc.appcore.util.RelationAccessImpl;
 import com.bc.appcore.util.Settings;
 import com.bc.appcore.util.SettingsImpl;
 import com.bc.appcore.util.TextHandler;
-import com.bc.jpa.JpaMetaData;
-import com.bc.jpa.sync.MasterSlaveTypes;
-import com.bc.jpa.sync.impl.MasterSlaveTypesImpl;
 import com.bc.jpa.util.EntityFromMapBuilder;
 import com.bc.jpa.util.EntityFromMapBuilderImpl;
 import com.bc.jpa.util.MapBuilderForEntity;
@@ -56,6 +57,8 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import com.bc.appcore.util.LoggingConfigManager;
+import com.bc.jpa.metadata.PersistenceMetaData;
+import com.bc.jpa.metadata.PersistenceUnitMetaData;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Mar 29, 2017 4:24:26 PM
@@ -126,7 +129,10 @@ public class ObjectFactoryImpl
         
         if(type.equals(EntityFromMapBuilder.class)){
 
-            output = new EntityFromMapBuilderImpl(app.getJpaContext(), app.getPersistenceUnitNames());
+            output = new EntityFromMapBuilderImpl(
+                    app.getPersistenceContext(), 
+                    Collections.singleton(app.getActivePersistenceUnitContext().getName())
+            );
 
         }else if(type.equals(MapBuilder.class)){
 
@@ -135,6 +141,10 @@ public class ObjectFactoryImpl
         }else if(type.equals(ObjectFactory.class)){
 
             output = new ObjectFactoryImpl(app);
+
+        }else if(type.equals(ResultHandler.class)){
+
+            output = new ResultHandlerImpl();
 
         }else if(type.equals(User.class)) {    
 
@@ -153,7 +163,14 @@ public class ObjectFactoryImpl
                         "Cannot create user without instance of: " + 
                                 AppAuthenticationSession.class.getName());
             }
-            
+        }else if(type.equals(BuildEntityStructure.class)){
+
+            output = new BuildEntityStructureImpl(app);
+
+        }else if(type.equals(GetRelatedTypes.class)){
+
+            output = new GetRelatedTypesImpl(this);
+
         }else if(type.equals(ColumnLabelProvider.class)){
 
             output = new ColumnLabelProviderImpl(app.getConfig(), this.getOrException(TypeProvider.class));
@@ -165,11 +182,11 @@ public class ObjectFactoryImpl
             final Map<Class, Set<String>> typeColumnNames = this.getEntityTypeColumnNames();
 
             output = new EntityMemberTypeProvider(
-                    app.getJpaContext(), typeColumnNames, columnNamesOnly);
+                    app.getActivePersistenceUnitContext(), typeColumnNames, columnNamesOnly);
 
         }else if(type.equals(TypeProvider.class)){
 
-            final Set<Class> entityTypes = app.getJpaContext().getMetaData().getEntityClasses(app.getPersistenceUnitNames());
+            final Set<Class> entityTypes = app.getActivePersistenceUnitContext().getMetaData().getEntityClasses();
 
             output = new TypeProviderImpl(entityTypes, this.getOrException(MemberTypeProvider.class));
 
@@ -198,11 +215,6 @@ public class ObjectFactoryImpl
 
             output = new SettingsImpl(app);
 
-        }else if(type.equals(MasterSlaveTypes.class)){
-            
-            output = new MasterSlaveTypesImpl(app.getJpaContext().getMetaData(), 
-                    app.getMasterPersistenceUnitTest(), app.getSlavePersistenceUnitTest());
-
         }else{
 
             throw new ObjectNotSupportedException(type.getName());
@@ -215,19 +227,19 @@ public class ObjectFactoryImpl
         
         final Map<Class, Set<String>> output = new LinkedHashMap();
         
-        final JpaMetaData metaData = app.getJpaContext().getMetaData();
-        final Set<String> puNames = app.getPersistenceUnitNames();
+        final PersistenceMetaData metaData = app.getPersistenceContext().getMetaData();
         
-        for(String puName : puNames) {
+        final String puName = app.getActivePersistenceUnitContext().getName();
             
-            final Class [] puTypes = metaData.getEntityClasses(puName);
-            
-            for(Class puType : puTypes) {
-                
-                final Set<String> columnNames = new HashSet(Arrays.asList(metaData.getColumnNames(puType)));
-                
-                output.put(puType, columnNames);
-            }
+        final Set<Class> puTypes = metaData.getEntityClasses(puName);
+
+        final PersistenceUnitMetaData puMeta = metaData.getMetaData(puName);
+
+        for(Class puType : puTypes) {
+
+            final Set<String> columnNames = new HashSet(Arrays.asList(puMeta.getColumnNames(puType)));
+
+            output.put(puType, columnNames);
         }
         
         return output.isEmpty() ? Collections.EMPTY_MAP : Collections.unmodifiableMap(output);
