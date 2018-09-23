@@ -23,12 +23,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import com.bc.appcore.Names;
 import java.io.Serializable;
+import java.util.function.UnaryOperator;
 import java.util.logging.Logger;
 
 /**
@@ -44,24 +43,14 @@ public class PropertiesContextBuilder implements Serializable {
     
     private String dirName;
     
-    private String prefix;
-    
-    private String suffix;
-    
     private boolean buildAttempted;
     
-    private final Map<String, String> typePrefixes;
-    
-    private final Map<String, String> typeFileNames;
-    
-    private final Map<String, String> typeSuffixes;
+    private UnaryOperator<String> filenameProvider;
     
     public PropertiesContextBuilder() {
         this.classLoader = Thread.currentThread().getContextClassLoader();
         this.dirName = Names.CONFIGS_DIR;
-        this.typePrefixes = new HashMap<>();
-        this.typeFileNames = new HashMap<>();
-        this.typeSuffixes = new HashMap<>();
+        this.filenameProvider = (name) -> name + ".properties";
     }
     
     public PropertiesContext build() {
@@ -73,9 +62,9 @@ public class PropertiesContextBuilder implements Serializable {
         
         Objects.requireNonNull(classLoader);
         Objects.requireNonNull(workingDirPath);
-        Objects.requireNonNull(typeFileNames);
+        Objects.requireNonNull(filenameProvider);
         
-        return new PropertiesContextBuilder.PropertiesContextImpl();
+        return new PropertiesContextBuilder.PropertiesContextImpl(filenameProvider);
     }
     
     public PropertiesContextBuilder classLoader(ClassLoader classLoader) {
@@ -93,37 +82,19 @@ public class PropertiesContextBuilder implements Serializable {
         return this;
     }
     
-    public PropertiesContextBuilder typePrefix(String typeName, String prefix) {
-        this.typePrefixes.put(typeName, prefix);
-        return this;
-    }
-    
-    public PropertiesContextBuilder typeFileNames(Map<String, String> typeFileNames) {
-        this.typeFileNames.putAll(typeFileNames);
-        return this;
-    }
-    
-    public PropertiesContextBuilder typeFileName(String typeName, String fileName) {
-        this.typeFileNames.put(typeName, fileName);
-        return this;
-    }
-    
-    public PropertiesContextBuilder typeSuffix(String typeName, String suffix) {
-        this.typeSuffixes.put(typeName, suffix);
-        return this;
-    }
-    
-    public PropertiesContextBuilder prefix(String prefix) {
-        this.prefix = prefix;
-        return this;
-    }
-
-    public PropertiesContextBuilder suffix(String suffix) {
-        this.suffix = suffix;
+    public PropertiesContextBuilder filenameProvider(UnaryOperator<String> filenameProvider) {
+        this.filenameProvider = filenameProvider;
         return this;
     }
 
     private class PropertiesContextImpl implements PropertiesContext {
+        
+        private final UnaryOperator<String> filenameProvider;
+
+        public PropertiesContextImpl(UnaryOperator<String> filenameProvider) {
+            this.filenameProvider = Objects.requireNonNull(filenameProvider);
+        }
+        
         @Override
         public String getWorkingDirPath() {
             return workingDirPath;
@@ -141,7 +112,7 @@ public class PropertiesContextBuilder implements Serializable {
         @Override
         public Path get(String typeName) {
             final String parent = this.getDirPath();
-            final String filename = this.getFileName(typeName);
+            final String filename = this.filenameProvider.apply(typeName);
             final Path path = Paths.get(parent, filename);
             LOG.fine(() -> "Parent: " + parent + ", name: " + filename + "\nPath: " + path);
             return path;
@@ -173,39 +144,6 @@ public class PropertiesContextBuilder implements Serializable {
             final Path path = this.get(typeName);
             final List<OutputStream> output = new GetOutputStreams(classLoader, append).get(path);
             return output;
-        }
-        
-        public String getFileName(String typeName) {
-            final String fileName;
-            final String cached = typeFileNames.get(typeName);
-            if(cached != null) {
-                fileName = cached;
-            }else{
-                final String mPrefix = this.getPrefix(typeName);
-                final String mSuffix = this.getSuffix(typeName);
-                if(mPrefix == null && mSuffix == null) {
-                    fileName = typeName + ".properties";
-                }else if(mPrefix == null && mSuffix != null) {
-                    fileName = typeName + '_' + mSuffix  + ".properties";
-                }else if(mPrefix != null && mSuffix == null) {
-                    fileName = mPrefix + '_' + typeName + ".properties";
-                }else{
-                    fileName = mPrefix + '_' + typeName + '_' + mSuffix  + ".properties";
-                }
-            }
-            return fileName;
-        }
-        
-        public String getPrefix(String typeName) {
-            return typePrefixes.getOrDefault(typeName, prefix);
-        }
-        
-        public String getSuffix(String typeName) {
-            return typeSuffixes.getOrDefault(typeName, suffix);
-        }
-
-        public String getDirName() {
-            return dirName;
         }
     }
 }

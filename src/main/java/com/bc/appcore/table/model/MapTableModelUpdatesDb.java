@@ -60,7 +60,7 @@ public class MapTableModelUpdatesDb<T> extends MapTableModel {
         
         final String columnName = this.getColumnName(columnIndex);
         
-        try(final Update<T> dao = puContext.getDao().forUpdate(entityType)) {
+        try(final Update<T> dao = puContext.getDaoForUpdate(entityType)) {
             
             final Object idValue = this.getValueAt(rowIndex, this.idColumnIndex);
             

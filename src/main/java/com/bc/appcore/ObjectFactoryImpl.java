@@ -55,16 +55,18 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import com.bc.appcore.util.LoggingConfigManager;
+import com.bc.config.Config;
+import com.bc.jpa.context.PersistenceUnitContext;
 import com.bc.jpa.predicates.DatabaseCommunicationsFailureTest;
-import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import com.bc.reflection.MemberNamesProvider;
 import java.lang.reflect.Method;
+import java.util.Collection;
+import java.util.Properties;
 import java.util.function.BiFunction;
 
 /**
@@ -72,25 +74,52 @@ import java.util.function.BiFunction;
  */
 public class ObjectFactoryImpl implements ObjectFactory {
 
-    private static final Logger LOG = Logger.getLogger(ObjectFactoryImpl.class.getName());
+    private transient static final Logger LOG = Logger.getLogger(ObjectFactoryImpl.class.getName());
     
     private final ObjectFactory parent;
     
-    private final AppContext context;
+    private final AppAuthenticationSession authSession;
+    
+    private final Config config;
+    
+    private final Properties settings;
+    
+    private final Supplier<PersistenceUnitContext> persistenceUnitContextSupplier;
     
     private final Map<Class, Supplier> defaultSuppliers;
 
     public ObjectFactoryImpl(AppContext app) {
-        this(null, app);
+        this(null, app.getAuthenticationSession().orElse(null),
+                app.getConfig(), app.getSettingsConfig(), 
+                () -> app.getActivePersistenceUnitContext());
+    }
+
+    public ObjectFactoryImpl(
+            Config config,
+            Properties settings,
+            Supplier<PersistenceUnitContext> persistenceUnitContextSupplier) {
+        this(null, null, config, settings, persistenceUnitContextSupplier);
     }
     
-    public ObjectFactoryImpl(ObjectFactory parent, AppContext app) {
+    public ObjectFactoryImpl(
+            ObjectFactory parent,
+            AppAuthenticationSession authSession,
+            Config config,
+            Properties settings,
+            Supplier<PersistenceUnitContext> persistenceUnitContextSupplier) {
+        this.validateParent(parent);
+        this.parent = parent;
+        this.authSession = authSession;
+        this.config = Objects.requireNonNull(config);
+        this.settings = Objects.requireNonNull(settings);
+        this.persistenceUnitContextSupplier = Objects.requireNonNull(persistenceUnitContextSupplier);
+        this.defaultSuppliers = new HashMap<>();
+    }
+    
+    private void validateParent(ObjectFactory parent) {
         if(this.equals(parent)) {
             throw new IllegalArgumentException("An instance of '"+ObjectFactory.class.getSimpleName()+"' cannot be parent to itself");
         }
-        this.parent = parent;
-        this.context = Objects.requireNonNull(app);
-        this.defaultSuppliers = new HashMap<>();
     }
     
     @Override
@@ -172,9 +201,11 @@ public class ObjectFactoryImpl implements ObjectFactory {
 
         }else if(type.equals(EntityFromMapBuilder.class)){
 
+            final PersistenceUnitContext puContext = this.persistenceUnitContextSupplier.get();
+            
             output = new EntityFromMapBuilderImpl(
-                    context.getPersistenceContext(), 
-                    Collections.singleton(context.getPersistenceContextSwitch().getActive().getName())
+                    puContext.getPersistenceContext(), 
+                    Collections.singleton(puContext.getName())
             );
 
         }else if(type.equals(MapBuilder.class)){
@@ -183,7 +214,8 @@ public class ObjectFactoryImpl implements ObjectFactory {
 
         }else if(type.equals(ObjectFactory.class)){
 
-            output = new ObjectFactoryImpl(context);
+            output = new ObjectFactoryImpl(this.parent, this.authSession, this.config, 
+                    this.settings, this.persistenceUnitContextSupplier);
 
         }else if(type.equals(ResultHandler.class)){
 
@@ -195,7 +227,7 @@ public class ObjectFactoryImpl implements ObjectFactory {
             
         }else if(type.equals(BuildEntityStructure.class)){
 
-            output = new BuildEntityStructureImpl(context, this);
+            output = new BuildEntityStructureImpl(this, this.persistenceUnitContextSupplier.get());
 
         }else if(type.equals(GetRelatedTypes.class)){
 
@@ -203,18 +235,18 @@ public class ObjectFactoryImpl implements ObjectFactory {
 
         }else if(type.equals(ColumnLabelProvider.class)){
 
-            output = new ColumnLabelProviderImpl(context.getConfig(), this.getOrException(TypeProvider.class));
+            output = new ColumnLabelProviderImpl(this.config, this.getOrException(TypeProvider.class));
 
         }else if(type.equals(MemberNamesProvider.class)){
 
-            output = new ColumnNamesProvider(context.getActivePersistenceUnitContext());
+            output = new ColumnNamesProvider(this.persistenceUnitContextSupplier.get());
 
         }else if(type.equals(MemberTypeProvider.class)){
 
             final boolean columnNamesOnly = false;
 
             final BiFunction<Class, String, Method> getNamedGetter = new GetNamedGetter(
-                    context.getActivePersistenceUnitContext()
+                    this.persistenceUnitContextSupplier.get()
             );
             
             output = new MemberTypeProviderImpl(
@@ -223,7 +255,8 @@ public class ObjectFactoryImpl implements ObjectFactory {
 
         }else if(type.equals(TypeProvider.class)){
 
-            final Set<Class> entityTypes = context.getPersistenceContextSwitch().getActive().getMetaData(false).getEntityClasses();
+            final Collection<Class> entityTypes = this.persistenceUnitContextSupplier
+                    .get().getMetaData(false).getEntityClasses();
 
             output = new TypeProviderImpl(entityTypes, this.getOrException(MemberTypeProvider.class));
 
@@ -234,7 +267,7 @@ public class ObjectFactoryImpl implements ObjectFactory {
         }else if(type.equals(LoggingConfigManager.class)){
 
 // @todo there should be ConfigNames.CHARSET_NAME etc             
-            output = new LoggingConfigManagerImpl(this.getContext().getConfig().getString("charsetName", "utf-8"));
+            output = new LoggingConfigManagerImpl(this.config.getString("charsetName", "utf-8"));
 
         }else if(type.equals(TextHandler.class)){
 
@@ -246,7 +279,7 @@ public class ObjectFactoryImpl implements ObjectFactory {
 
         }else if(type.equals(Settings.class)){
 
-            output = new SettingsImpl(context);
+            output = new SettingsImpl(this.config, this.settings);
 
         }else{
 
@@ -262,7 +295,7 @@ public class ObjectFactoryImpl implements ObjectFactory {
     
     public User createUserLoginWithUsername() {
 //@todo there should be ConfigNames.DEFAULT_EMAIL_HOST 
-        final String defaultEmailHost = context.getConfig().getString("defaultEmailHost", "gmail.com");
+        final String defaultEmailHost = this.config.getString("defaultEmailHost", "gmail.com");
         final Function<String, String> nameToEmail = 
                 new ReplaceNonWordCharsWithUnderscore().andThen(
                         (formattedName) -> formattedName + '@' + defaultEmailHost
@@ -271,22 +304,21 @@ public class ObjectFactoryImpl implements ObjectFactory {
     }
     
     private User createUser(Function<String, String> nameToEmail) {
-        final Optional<AppAuthenticationSession> optAuthSession = context.getAuthenticationSession();
-        if(optAuthSession.isPresent()) {
+        if(this.authSession != null) {
             
             return nameToEmail == null 
                     
                     ? 
                     
                     new UserImpl(
-                            optAuthSession.get(), 
+                            this.authSession, 
                             this.getOrException(JsonResponseIsErrorTest.class)
                     ) 
                     
                     : 
                     
                     new UserLoginWithUsername(
-                            optAuthSession.get(), 
+                            this.authSession, 
                             this.getOrException(JsonResponseIsErrorTest.class),
                             nameToEmail
                     );
@@ -298,16 +330,28 @@ public class ObjectFactoryImpl implements ObjectFactory {
         }
     }
     
-    public Map<Class, Supplier> getDefaultSuppliers() {
-        return defaultSuppliers;
-    }
-
-    public AppContext getContext() {
-        return context;
-    }
+//    protected Map<Class, Supplier> getDefaultSuppliers() {
+//        return defaultSuppliers;
+//    }
 
     @Override
     public ObjectFactory getParent() {
         return parent;
+    }
+
+    public AppAuthenticationSession getAuthSession() {
+        return authSession;
+    }
+
+    public Config getConfig() {
+        return config;
+    }
+
+    public Properties getSettings() {
+        return settings;
+    }
+
+    public Supplier<PersistenceUnitContext> getPersistenceUnitContextSupplier() {
+        return persistenceUnitContextSupplier;
     }
 }

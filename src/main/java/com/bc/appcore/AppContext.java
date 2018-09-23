@@ -63,7 +63,7 @@ public interface AppContext {
             final OutputStream out = this.getPropertiesContext().getOutputStream(typeName, false);
             try(Writer writer  = new OutputStreamWriter(out, charsetName)) {
                 final String comment = "Stored by: "+System.getProperty("user.name")+" on " + ZonedDateTime.now();
-                ((Properties)this.getConfig().getData()).store(writer, comment);
+                ((Properties)this.getConfig().getSourceData()).store(writer, comment);
             }
             return true;
         }catch(IOException e) {

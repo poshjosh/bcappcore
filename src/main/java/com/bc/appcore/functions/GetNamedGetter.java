@@ -6,7 +6,7 @@
 
 package com.bc.appcore.functions;
 
-import com.bc.jpa.EntityMemberAccess;
+import com.bc.jpa.dao.util.EntityMemberAccess;
 import com.bc.jpa.context.PersistenceUnitContext;
 import java.io.Serializable;
 import java.lang.reflect.Method;

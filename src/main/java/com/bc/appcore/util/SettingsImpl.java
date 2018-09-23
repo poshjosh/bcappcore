@@ -45,9 +45,7 @@ import com.bc.config.Config;
  */
 public class SettingsImpl extends HashMap<String, Object> implements Settings {
 
-    private static final Logger logger = Logger.getLogger(SettingsImpl.class.getName());
-    
-    private final AppContext context;
+    private transient static final Logger LOG = Logger.getLogger(SettingsImpl.class.getName());
     
     private final Config data;
     
@@ -56,11 +54,10 @@ public class SettingsImpl extends HashMap<String, Object> implements Settings {
     private final Map<String, Object> byLabels;
 
     public SettingsImpl(AppContext context) {
-        this(context, context.getConfig(), context.getSettingsConfig());
+        this(context.getConfig(), context.getSettingsConfig());
     }
     
-    public SettingsImpl(AppContext context, Config data, Properties metaData) {
-        this.context = Objects.requireNonNull(context);
+    public SettingsImpl(Config data, Properties metaData) {
         this.data = Objects.requireNonNull(data);
         this.metaData = Objects.requireNonNull(metaData);
         
@@ -68,7 +65,7 @@ public class SettingsImpl extends HashMap<String, Object> implements Settings {
         
         final Set<String> allNames = data.getNames();
         
-        logger.log(Level.FINER, "All names: {0}", allNames);
+        LOG.log(Level.FINER, "All names: {0}", allNames);
         
         this.init(allNames);
     }
@@ -92,7 +89,7 @@ public class SettingsImpl extends HashMap<String, Object> implements Settings {
         
         final Object value = this.get(name, null);
         
-        logger.log(Level.FINER, () -> "Adding setting: " + name + '=' + value);
+        LOG.log(Level.FINER, () -> "Adding setting: " + name + '=' + value);
 
         super.put(name, value);
 
@@ -135,8 +132,8 @@ public class SettingsImpl extends HashMap<String, Object> implements Settings {
     public Object update(AppCore app, String name, Object newValue, boolean onlyIfAbsent) 
             throws IOException {
         
-        if(logger.isLoggable(Level.FINE)) {
-            logger.log(Level.FINE, "Putting: {0}={1}", new Object[]{name, newValue});
+        if(LOG.isLoggable(Level.FINE)) {
+            LOG.log(Level.FINE, "Putting: {0}={1}", new Object[]{name, newValue});
         }
         
         final Object oldValue = this.getOrDefault(name, null);
@@ -157,16 +154,16 @@ public class SettingsImpl extends HashMap<String, Object> implements Settings {
                     
                     final List<Action> actions = this.getActions(name);
 
-                    logger.fine(() -> "Setting: " + name + ", has " + actions.size() + " actions.");
+                    LOG.fine(() -> "Setting: " + name + ", has " + actions.size() + " actions.");
 
                     for(Action action : actions) {
                         
-                        logger.fine(() -> "For setting: " + name + ", executing action: " + action);
+                        LOG.fine(() -> "For setting: " + name + ", executing action: " + action);
 
                         action.execute(app, Collections.singletonMap(name, newValue));
                     }
 
-                    logger.fine("Save successful");
+                    LOG.fine("Save successful");
                 }else{
                     if(set) {
                         this.set(name, oldValue);
@@ -244,7 +241,7 @@ public class SettingsImpl extends HashMap<String, Object> implements Settings {
         
         name = this.getAlias(name, name);
 
-        final com.bc.config.Config config = new com.bc.config.ConfigImpl(metaData, null);
+        final com.bc.config.Config config = new com.bc.config.PropertiesConfig(metaData, null);
 
         final String [] arr = config.getArray(name+".options");
 
@@ -256,7 +253,7 @@ public class SettingsImpl extends HashMap<String, Object> implements Settings {
         
         name = this.getAlias(name, name);
 
-        final com.bc.config.Config config = new com.bc.config.ConfigImpl(metaData, null);
+        final com.bc.config.Config config = new com.bc.config.PropertiesConfig(metaData, null);
 
         final String [] arr = config.getArray(name+".actions");
         

@@ -18,7 +18,7 @@ package com.bc.appcore.table.model;
 
 import com.bc.appcore.AppCore;
 import com.bc.appcore.util.RelationAccess;
-import com.bc.jpa.search.SearchResults;
+import com.bc.jpa.dao.search.SearchResults;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -26,7 +26,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import com.bc.appcore.jpa.model.EntityResultModel;
 import com.bc.jpa.context.PersistenceUnitContext;
-import com.bc.jpa.dao.Dao;
+import com.bc.jpa.dao.Select;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on May 20, 2017 3:34:37 PM
@@ -73,11 +73,11 @@ public class XYCountTableModelBuilderImpl<X, Y>
         Objects.requireNonNull(this.tableModelDisplayFormat);
         
         final PersistenceUnitContext jpaContext = this.app.getActivePersistenceUnitContext();
-        try(final Dao dao = jpaContext.getDao()) {
-            this.xValues = dao.forSelect(xEntityType).from(xEntityType).createQuery().getResultList();
+        try(final Select select = jpaContext.getDaoForSelect(xEntityType)) {
+            this.xValues = select.from(xEntityType).createQuery().getResultList();
         }        
-        try(final Dao dao = jpaContext.getDao()) {
-            this.yValues = dao.forSelect(yEntityType).from(yEntityType).createQuery().getResultList();
+        try(final Select select = jpaContext.getDaoForSelect(yEntityType)) {
+            this.yValues = select.from(yEntityType).createQuery().getResultList();
         }        
         
         if(logger.isLoggable(Level.FINE)) {

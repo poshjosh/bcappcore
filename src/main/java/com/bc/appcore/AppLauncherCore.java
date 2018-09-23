@@ -49,12 +49,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import com.bc.appcore.properties.PropertiesContext;
-import com.bc.config.ConfigImpl;
+import com.bc.config.PropertiesConfig;
 import com.bc.jpa.context.PersistenceContext;
 import java.util.ArrayList;
 import com.bc.appcore.jpa.PersistenceContextManager;
 import com.bc.appcore.jpa.nodequery.RenameUppercaseSlaveColumnsThenTables;
 import com.bc.appcore.properties.PropertiesContextBuilder;
+import com.bc.appcore.properties.PropertiesContextFilenameProvider;
 import com.bc.config.Config;
 import com.bc.jpa.context.PersistenceUnitContext;
 import com.bc.jpa.predicates.DatabaseCommunicationsFailureTest;
@@ -182,10 +183,14 @@ public class AppLauncherCore<A extends AppCore> {
                 .workingDirPath(internalResource)
                 .classLoader(classLoader);
         
+        final PropertiesContextFilenameProvider fnameProvider = new PropertiesContextFilenameProvider();
+        
         for(String typeName : propertyTypesWithDevmodeSuffixes) {
             
-            propsCtxBuilder.typeSuffix(typeName, productionMode ? null : "devmode");
+            fnameProvider.typeSuffix(typeName, productionMode ? null : "devmode");
         }
+        
+        propsCtxBuilder.filenameProvider(fnameProvider);
         
         final PropertiesContext internalPropsCtx = propsCtxBuilder.build();
         
@@ -353,7 +358,7 @@ public class AppLauncherCore<A extends AppCore> {
 
             final Properties appProperties = this.loadAppProperties(propsCtxList);
             
-            final Config<Properties> config = new ConfigImpl(appProperties, "EEE MMM dd HH:mm:ss z yyyy");
+            final Config<Properties> config = new PropertiesConfig(appProperties, "EEE MMM dd HH:mm:ss z yyyy");
 
             this.charsetName = this.getCharsetName(config);
             
@@ -582,10 +587,12 @@ public class AppLauncherCore<A extends AppCore> {
         return this.parentPropertiesContexts(productionMode, Arrays.asList(parentWorkingDirPaths));
     }
     protected AppLauncherCore parentPropertiesContexts(boolean productionMode, List<String> parentWorkingDirPaths) {
+
+        final PropertiesContextFilenameProvider fnameProvider = new PropertiesContextFilenameProvider();
+        fnameProvider.suffix(productionMode ? null : "devmode");
+        
         final Function<String, PropertiesContext> create = (workingDirPath) ->
-                productionMode ? 
-                PropertiesContext.builder().workingDirPath(workingDirPath).build() : 
-                PropertiesContext.builder().workingDirPath(workingDirPath).suffix("devmode").build();
+                PropertiesContext.builder().workingDirPath(workingDirPath).filenameProvider(fnameProvider).build();
         final List<PropertiesContext> list = 
                 parentWorkingDirPaths.stream().map(create).collect(Collectors.toList());
         return this.parentPropertiesPaths(list);
@@ -857,10 +864,10 @@ public class AppLauncherCore<A extends AppCore> {
                     }
                     output.load(reader);
 
-                    final Set<String> stringNames = output.stringPropertyNames();
+                    LOG.info(() -> "Loaded "+typeName+" properties from: " + path);
 
-                    LOG.fine(() -> "Loaded "+typeName+" properties from: " + 
-                    path + "\nProperty names: " + stringNames);
+                    final Set<String> stringNames = output.stringPropertyNames();
+                    LOG.fine(() -> "For "+typeName+", property names: " + stringNames);
                 }
             }catch(IOException e) {
                 this.logShortWarning("Unexpected Exception", e);

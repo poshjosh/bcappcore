@@ -16,7 +16,7 @@
 
 package com.bc.appcore.table.model;
 
-import com.bc.jpa.search.SearchResults;
+import com.bc.jpa.dao.search.SearchResults;
 import java.util.List;
 import com.bc.appcore.jpa.model.EntityResultModel;
 

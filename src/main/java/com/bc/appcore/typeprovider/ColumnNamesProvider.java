@@ -37,8 +37,8 @@ public class ColumnNamesProvider implements Serializable, MemberNamesProvider{
     
     private final PersistenceUnitContext puContext;
 
-    public ColumnNamesProvider(PersistenceUnitContext puContext) {
-        this.puContext = Objects.requireNonNull(puContext);
+    public ColumnNamesProvider(PersistenceUnitContext persistenceUnitContextSupplier) {
+        this.puContext = Objects.requireNonNull(persistenceUnitContextSupplier);
     }
 
     public Map<Class, Set<String>> getTypeColumnNames() {

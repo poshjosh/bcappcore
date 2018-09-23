@@ -17,7 +17,7 @@
 package com.bc.appcore.jpa.model;
 
 import com.bc.reflection.TypeProvider;
-import com.bc.sql.SQLUtils;
+import com.bc.jpa.dao.sql.SQLUtils;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -25,7 +25,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -41,7 +40,7 @@ import java.util.Iterator;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import com.bc.jpa.dao.Delete;
-import com.bc.jpa.EntityMemberAccess;
+import com.bc.jpa.dao.util.EntityMemberAccess;
 import com.bc.jpa.metadata.PersistenceUnitMetaData;
 import java.io.Serializable;
 import java.util.function.BiFunction;
@@ -147,7 +146,7 @@ public class EntityResultModelImpl<T> implements EntityResultModel<T> {
         
         final PersistenceUnitMetaData puMetaData = this.puContext.getMetaData(false);
         
-        final Set<Class> puClasses = puMetaData.getEntityClasses();
+        final Collection<Class> puClasses = puMetaData.getEntityClasses();
 
         for(Class puClass : puClasses) {
 
@@ -491,7 +490,8 @@ public class EntityResultModelImpl<T> implements EntityResultModel<T> {
     
     public void remove(Class entityClass, Object entity) {
         final Object idValue = this.entityTypeToMemberAccessMap.get(entityClass).getId(entity);
-        try(final Delete dao = app.getDao().forDelete(entityClass)) {
+        try(final Delete dao = app.getActivePersistenceUnitContext()
+                .getDaoForDelete(entityClass)) {
             final Object managed = dao.find(entityClass, idValue);
             entity = managed;
             if(logger.isLoggable(Level.FINER)) {

@@ -54,7 +54,7 @@ public class ExecuteQueryForNodes {
 
     public void run() {
         
-        final Node<String> puNode = this.puContext.getMetaData().getNode();
+        final Node<String> puNode = this.puContext.getMetaData();
         
         final Function<EntityManager, List<Integer>> action = (entityManager) -> {
 

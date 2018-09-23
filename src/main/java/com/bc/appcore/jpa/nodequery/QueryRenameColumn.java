@@ -16,7 +16,7 @@
 
 package com.bc.appcore.jpa.nodequery;
 
-import com.bc.jpa.metadata.PersistenceNodeBuilder;
+import com.bc.jpa.metadata.PersistenceNode;
 import com.bc.node.Node;
 
 /**
@@ -30,7 +30,7 @@ public class QueryRenameColumn extends QueryRename {
 
     @Override
     public void validate(Node<String> columnNode) {
-        if(columnNode.getLevel() != PersistenceNodeBuilder.NODE_LEVEL_COLUMN) {
+        if(columnNode.getLevel() != PersistenceNode.column.getLevel()) {
             throw new IllegalArgumentException("Expected column node but found: " + columnNode);
         }
     }

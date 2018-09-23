@@ -19,14 +19,15 @@ package com.bc.appcore.jpa;
 import com.bc.appcore.exceptions.UserRuntimeException;
 import com.bc.jpa.EntityManagerFactoryCreatorImpl;
 import com.bc.jpa.context.PersistenceContext;
-import com.bc.jpa.context.PersistenceContextEclipselinkOptimized;
+import com.bc.jpa.context.eclipselink.PersistenceContextEclipselinkOptimized;
 import com.bc.jpa.context.PersistenceUnitContext;
 import com.bc.jpa.predicates.DatabaseCommunicationsFailureTest;
-import com.bc.sql.MySQLDateTimePatterns;
+import com.bc.jpa.dao.sql.MySQLDateTimePatterns;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.sql.SQLException;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
@@ -154,11 +155,11 @@ public class PersistenceContextManagerImpl implements PersistenceContextManager 
         
         final String persistenceUnit = puContext.getPersistenceUnitName();
         
-        final Set<Class> classes = puContext.getMetaData().getEntityClasses();
+        final Collection<Class> classes = puContext.getMetaData().getEntityClasses();
         
         for(Class cls : classes) {
             
-            final Number count = puContext.getDao().forSelect(Number.class)
+            final Number count = puContext.getDaoForSelect(Number.class)
                     .from(cls).count().getSingleResultAndClose();
             logger.finer(() -> "Count: " + count + ", persistence unit: " + 
                     persistenceUnit + ", entity type: " + cls.getName());

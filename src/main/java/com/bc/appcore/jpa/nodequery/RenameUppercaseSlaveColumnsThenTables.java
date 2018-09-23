@@ -1,7 +1,7 @@
 package com.bc.appcore.jpa.nodequery;
 
 import com.bc.jpa.context.PersistenceUnitContext;
-import com.bc.jpa.metadata.PersistenceNodeBuilder;
+import com.bc.jpa.metadata.PersistenceNode;
 import com.bc.node.Node;
 import com.bc.node.NodeFormat;
 import java.util.Objects;
@@ -33,10 +33,10 @@ public class RenameUppercaseSlaveColumnsThenTables {
                 }    
             };
             
-            final Node<String> masterPuNode = masterPuContext.getMetaData().getNode();
+            final Node<String> masterPuNode = masterPuContext.getMetaData();
             logger.finer(() -> "MASTER PERSISTENCE UNIT NODE\n" + new NodeFormat().format(masterPuNode));            
 
-            final Node<String> slavePuNode = slavePuContext.getMetaData().getNode();
+            final Node<String> slavePuNode = slavePuContext.getMetaData();
             logger.finer(() -> "SLAVE PERSISTENCE UNIT NODE\n" + new NodeFormat().format(slavePuNode));
 
             logger.fine(() -> "Persistence Unit Node to visit: " + slavePuNode);
@@ -46,11 +46,11 @@ public class RenameUppercaseSlaveColumnsThenTables {
                     Objects.requireNonNull(slavePuNode.getValueOrDefault(null)), 
                     false);
 
-            final Predicate<Node<String>> tableFilter = new NodeLevelTest<String>(PersistenceNodeBuilder.NODE_LEVEL_TABLE)
+            final Predicate<Node<String>> tableFilter = new NodeLevelTest<String>(PersistenceNode.table.getLevel())
                     .and(nodeValueIsUpperCaseTest)
                     .and((node) -> !node.getValueOrDefault(null).startsWith("SYS"));
             
-            final Predicate<Node<String>> columnFilter = new NodeLevelTest<String>(PersistenceNodeBuilder.NODE_LEVEL_COLUMN)
+            final Predicate<Node<String>> columnFilter = new NodeLevelTest<String>(PersistenceNode.column.getLevel())
                     .and(nodeValueIsUpperCaseTest).and((node) -> {
                         final Node<String> parent = node.getParentOrDefault(null);
                         return parent != null && tableFilter.test(parent);

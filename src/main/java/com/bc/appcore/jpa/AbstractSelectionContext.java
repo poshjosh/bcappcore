@@ -17,7 +17,6 @@
 package com.bc.appcore.jpa;
 
 import com.bc.selection.SelectionContext;
-import com.bc.appcore.AppContext;
 import com.bc.selection.Selection;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -29,21 +28,21 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import com.bc.jpa.context.PersistenceUnitContext;
 import com.bc.jpa.dao.Select;
-import com.bc.jpa.EntityMemberAccess;
+import com.bc.jpa.dao.util.EntityMemberAccess;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Mar 31, 2017 5:28:32 PM
  */
 public abstract class AbstractSelectionContext implements SelectionContext {
 
-    private static final Logger logger = Logger.getLogger(AbstractSelectionContext.class.getName());
+    private transient static final Logger LOG = Logger.getLogger(AbstractSelectionContext.class.getName());
     
-    private final AppContext context;
+    private final PersistenceUnitContext puContext;
     
     private final Map<Class, EntityMemberAccess> updaters;
 
-    public AbstractSelectionContext(AppContext context) {
-        this.context = context;
+    public AbstractSelectionContext(PersistenceUnitContext puContext) {
+        this.puContext = Objects.requireNonNull(puContext);
         this.updaters = new HashMap<>();
     }
 
@@ -58,8 +57,8 @@ public abstract class AbstractSelectionContext implements SelectionContext {
         
         final String columnName = this.getSelectionColumn(entityType, null);
         
-        if(logger.isLoggable(Level.FINER)) {
-            logger.log(Level.FINER, "Entity type: {0}, selection col: {1}", 
+        if(LOG.isLoggable(Level.FINER)) {
+            LOG.log(Level.FINER, "Entity type: {0}, selection col: {1}", 
                     new Object[]{entityType.getName(), columnName});
         }
         
@@ -71,15 +70,13 @@ public abstract class AbstractSelectionContext implements SelectionContext {
             
         }else{
             
-            final PersistenceUnitContext jpaContext = context.getActivePersistenceUnitContext();
-            
-            try(Select builder = jpaContext.getDao().forSelect(entityType)) {
+            try(Select builder = puContext.getDaoForSelect(entityType)) {
                 
                 final List entityList = this.sort(
                         entityType, builder.from(entityType).createQuery().getResultList()
                 );
                 
-                logger.log(Level.FINER, () -> "Entity list: " + entityList);
+                LOG.log(Level.FINER, () -> "Entity list: " + entityList);
                 
                 selectionList = new ArrayList(entityList.size() + 1);
                 
@@ -96,8 +93,8 @@ public abstract class AbstractSelectionContext implements SelectionContext {
             
         }
         
-        if(logger.isLoggable(Level.FINER)) {
-            logger.log(Level.FINER, "Value type: {0}, Selection values: {1}", 
+        if(LOG.isLoggable(Level.FINER)) {
+            LOG.log(Level.FINER, "Value type: {0}, Selection values: {1}", 
                     new Object[]{entityType.getName(), selectionList});
         }
         
@@ -135,7 +132,7 @@ public abstract class AbstractSelectionContext implements SelectionContext {
     public EntityMemberAccess getEntityUpdater(Class entityType) {
         EntityMemberAccess output = this.updaters.get(entityType);
         if(output == null) {
-            output = context.getActivePersistenceUnitContext().getEntityMemberAccess(entityType);
+            output = this.puContext.getEntityMemberAccess(entityType);
             this.updaters.put(entityType, output);
         }
         return output;

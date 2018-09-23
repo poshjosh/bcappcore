@@ -17,7 +17,7 @@
 package com.bc.appcore.jpa;
 
 import com.bc.jpa.dao.SelectDao;
-import com.bc.jpa.search.SearchResults;
+import com.bc.jpa.dao.search.SearchResults;
 import java.util.function.Function;
 import javax.persistence.Query;
 

@@ -16,14 +16,14 @@
 
 package com.bc.appcore.functions;
 
-import com.bc.appcore.AppContext;
 import com.bc.appcore.jpa.EntityStructureFactory;
 import com.bc.appcore.ObjectFactory;
 import java.util.Map;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import com.bc.jpa.EntityMemberAccess;
+import com.bc.jpa.dao.util.EntityMemberAccess;
+import com.bc.jpa.context.PersistenceUnitContext;
 import com.bc.util.JsonFormat;
 
 /**
@@ -31,14 +31,14 @@ import com.bc.util.JsonFormat;
  */
 public class BuildEntityStructureImpl implements BuildEntityStructure {
 
-    private static final Logger logger = Logger.getLogger(BuildEntityStructureImpl.class.getName());
+    private static final Logger LOG = Logger.getLogger(BuildEntityStructureImpl.class.getName());
 
-    private final AppContext context;
+    private final PersistenceUnitContext puContext;
     private final ObjectFactory objFactory;
 
-    public BuildEntityStructureImpl(AppContext context, ObjectFactory objectFactory) {
-        this.context = Objects.requireNonNull(context);
+    public BuildEntityStructureImpl(ObjectFactory objectFactory, PersistenceUnitContext puContext) {
         this.objFactory = Objects.requireNonNull(objectFactory);
+        this.puContext = Objects.requireNonNull(puContext);
     }
     
     @Override
@@ -57,10 +57,8 @@ public class BuildEntityStructureImpl implements BuildEntityStructure {
             structure = esf.getNested(entityType);
             
         }else{
-
-            final EntityMemberAccess updater = this.context
-                    .getPersistenceContextSwitch()
-                    .getActive().getEntityMemberAccess(entityType);
+            
+            final EntityMemberAccess updater = this.puContext.getEntityMemberAccess(entityType);
 
             final boolean existingEntity = updater.getId(entity) != null;
 
@@ -69,8 +67,8 @@ public class BuildEntityStructureImpl implements BuildEntityStructure {
             structure = esf.get(entity, nullsAllowed, nullsAllowed);
         }
         
-        if(logger.isLoggable(Level.FINE)) {
-            logger.log(Level.FINE, "Entity type: {0}, Structure:\n{1}", 
+        if(LOG.isLoggable(Level.FINE)) {
+            LOG.log(Level.FINE, "Entity type: {0}, Structure:\n{1}", 
                     new Object[]{entityType, new JsonFormat(true, true, "  ").toJSONString(structure)});
         }
         

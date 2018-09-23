@@ -47,18 +47,22 @@ public class ExecuteSqlFromScriptFile<S>
         Objects.requireNonNull(scriptFile);
     
         final EntityManager em = puContext.getEntityManager();
+        try{
+            final List<Integer> output = new SqlScriptImporter("utf-8", Level.INFO)
+                    .executeSqlScript(em, scriptFile);
+            if(!output.isEmpty()) {
+                try{
+                    puContext.loadMetaData();
+                }catch(SQLException e) {
+                    throw new RuntimeException("Failed to execute SQL script: " + scriptFile, e);
+                }
+            }
 
-        final List<Integer> output = new SqlScriptImporter("utf-8", Level.INFO)
-                .executeSqlScript(em, scriptFile);
-        
-        if(!output.isEmpty()) {
-            try{
-                puContext.loadMetaData();
-            }catch(SQLException e) {
-                throw new RuntimeException("Failed to execute SQL script: " + scriptFile, e);
+            return output;
+        }finally{
+            if(em.isOpen()) {
+                em.close();
             }
         }
-
-        return output;
     }
 }

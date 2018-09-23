@@ -20,9 +20,9 @@ import com.bc.appcore.AppCore;
 import com.bc.appcore.exceptions.TaskExecutionException;
 import com.bc.appcore.parameter.ParameterException;
 import com.bc.jpa.context.PersistenceUnitContext;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Aug 7, 2017 8:22:44 PM
@@ -48,7 +48,7 @@ public class SyncIfSlaveDatabaseEmpty implements Action<AppCore, Boolean> {
             
             final PersistenceUnitContext slavePuCtx = optSlavePuCtx.get();
             
-            final Set<Class> puClasses = slavePuCtx.getMetaData().getEntityClasses();
+            final Collection<Class> puClasses = slavePuCtx.getMetaData().getEntityClasses();
 
             for(Class entityType : puClasses) {
 
@@ -78,7 +78,7 @@ public class SyncIfSlaveDatabaseEmpty implements Action<AppCore, Boolean> {
     }
     
     public Long count(PersistenceUnitContext puContext, Class puClass) {
-        return puContext.getDao().forSelect(Long.class)
+        return puContext.getDaoForSelect(Long.class)
                 .from(puClass).count().getSingleResultAndClose();
     }
 }

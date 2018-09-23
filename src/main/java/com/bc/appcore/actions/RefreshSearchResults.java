@@ -21,7 +21,7 @@ import com.bc.appcore.exceptions.TaskExecutionException;
 import com.bc.appcore.parameter.ParameterException;
 import com.bc.appcore.parameter.ParameterExtractor;
 import com.bc.jpa.context.PersistenceUnitContext;
-import com.bc.jpa.search.SearchResults;
+import com.bc.jpa.dao.search.SearchResults;
 import java.util.Map;
 
 /**

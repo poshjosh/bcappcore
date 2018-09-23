@@ -16,7 +16,7 @@
 
 package com.bc.appcore.jpa;
 
-import com.bc.jpa.search.SearchResults;
+import com.bc.jpa.dao.search.SearchResults;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 

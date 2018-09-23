@@ -17,7 +17,6 @@
 package com.bc.appcore.jpa;
 
 import com.bc.selection.SelectionContext;
-import com.bc.appcore.AppContext;
 import com.bc.appcore.ObjectFactory;
 import com.bc.appcore.predicates.MethodHasParameterType;
 import com.bc.reflection.predicates.MethodIsGetter;
@@ -46,14 +45,15 @@ import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.persistence.Entity;
-import com.bc.jpa.EntityMemberAccess;
+import com.bc.jpa.dao.util.EntityMemberAccess;
+import com.bc.jpa.context.PersistenceUnitContext;
 
 /**
  * @author Chinomso Bassey Ikwuagwu on Apr 29, 2017 9:50:47 AM
  */
 public class EntityStructureFactoryImpl implements EntityStructureFactory {
 
-    private static final Logger logger = Logger.getLogger(EntityStructureFactoryImpl.class.getName());
+    private transient static final Logger LOG = Logger.getLogger(EntityStructureFactoryImpl.class.getName());
 
     private static class MapBuilderDontRecurseSelectionTypes extends EntityRecursionFilter {
         private final SelectionContext sc;
@@ -72,13 +72,13 @@ public class EntityStructureFactoryImpl implements EntityStructureFactory {
         }
     }
 
-    private final AppContext context;
+    private final PersistenceUnitContext puContext;
     private final ObjectFactory objectFactory;
     
     private final EntityFromMapBuilder.Formatter formatter;
 
-    public EntityStructureFactoryImpl(AppContext context, ObjectFactory objectFactory) {
-        this.context = Objects.requireNonNull(context);
+    public EntityStructureFactoryImpl(PersistenceUnitContext puContext, ObjectFactory objectFactory) {
+        this.puContext = Objects.requireNonNull(puContext);
         this.objectFactory = Objects.requireNonNull(objectFactory);
         this.formatter= objectFactory.getOrException(EntityFromMapBuilder.Formatter.class);
     }
@@ -126,11 +126,11 @@ public class EntityStructureFactoryImpl implements EntityStructureFactory {
         data = this.removeEmptyStructures(data);
 //System.out.println("= = = = = = =  AFTER "+entityType.getName()+", from data\n: "+new JsonFormat(true, true, "  ").toJSONString(data)+"\n @"+this.getClass());
         
-        if(logger.isLoggable(Level.FINER)) {
-            logger.log(Level.FINER, "Building: {0}, from data:\n{1}", 
+        if(LOG.isLoggable(Level.FINER)) {
+            LOG.log(Level.FINER, "Building: {0}, from data:\n{1}", 
                     new Object[]{entityType.getName(), new JsonFormat(true, true, "  ").toJSONString(data)});
         }else{
-            logger.log(Level.FINE, "Building: {0}", entityType.getName());
+            LOG.log(Level.FINE, "Building: {0}", entityType.getName());
         }
         
         final Map<Map, Object> resultBuffer = new LinkedHashMap();
@@ -146,7 +146,7 @@ public class EntityStructureFactoryImpl implements EntityStructureFactory {
         
         final List builtEntities = new ArrayList(resultBuffer.values());
        
-        logger.log(Level.FINE, "Entities: {0}", builtEntities);        
+        LOG.log(Level.FINE, "Entities: {0}", builtEntities);        
         
         return builtEntities;
     }
@@ -204,7 +204,7 @@ public class EntityStructureFactoryImpl implements EntityStructureFactory {
     
     public Map getDefault(Object entity) {
         
-        final EntityMemberAccess updater = context.getActivePersistenceUnitContext().getEntityMemberAccess(entity.getClass());
+        final EntityMemberAccess updater = puContext.getEntityMemberAccess(entity.getClass());
         
         final boolean exists = updater.getId(entity) != null;
         
@@ -336,8 +336,8 @@ public class EntityStructureFactoryImpl implements EntityStructureFactory {
             }
         }
         
-        if(logger.isLoggable(Level.FINER)) {
-            logger.log(Level.FINER, "For: {0} found Map structure with keys: {1}", 
+        if(LOG.isLoggable(Level.FINER)) {
+            LOG.log(Level.FINER, "For: {0} found Map structure with keys: {1}", 
                     new Object[]{key, output == null ? null : output.keySet()});
         }
 
